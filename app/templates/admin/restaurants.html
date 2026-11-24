@@ -1,0 +1,128 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Manage Restaurants — BiteFlow Admin{% endblock %}
+{% block admin_content %}
+<div class="section-header">
+  <h1>Manage Restaurants</h1>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">Add New Restaurant (INSERT)</h3>
+    <form method="post" action="/admin/restaurants/create">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Restaurant Name</label>
+          <input name="name" class="form-control" placeholder="e.g. Bosphorus Seafood" required />
+        </div>
+        <div class="form-group">
+          <label>Cuisine Type</label>
+          <input name="cuisine_type" class="form-control" placeholder="e.g. Mediterranean" required />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input name="phone" class="form-control" placeholder="+90 312 ..." required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Address</label>
+          <input name="address" class="form-control" placeholder="Full street address" required />
+        </div>
+        <div class="form-group">
+          <label>Delivery Time (min)</label>
+          <input name="delivery_time_min" type="number" min="5" value="30" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label>Min. Order (TL)</label>
+          <input name="min_order_amount" type="number" step="0.01" min="0" value="150.00" class="form-control" required />
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">+ Add Restaurant</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">All Restaurants ({{ restaurants | length }})</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Restaurant</th>
+            <th>Cuisine</th>
+            <th>Delivery / Min.</th>
+            <th>Status</th>
+            <th>Actions (UPDATE / DELETE)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in restaurants %}
+            <tr>
+              <td>#{{ r.restaurant_id }}</td>
+              <td>
+                <strong>{{ r.name }}</strong>
+                <div style="font-size:0.8rem;color:var(--muted);">{{ r.address }} · {{ r.phone }}</div>
+              </td>
+              <td>{{ r.cuisine_type }}</td>
+              <td>{{ r.delivery_time_min }} min / {{ "%.2f"|format(r.min_order_amount) }} TL</td>
+              <td>
+                {% if r.is_active %}
+                  <span class="badge badge-active">Active</span>
+                {% else %}
+                  <span class="badge badge-inactive">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="inline-actions">
+                  <form method="post" action="/admin/restaurants/{{ r.restaurant_id }}/delete" style="margin:0;">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete restaurant {{ r.name }} and all its menu items?')">Delete</button>
+                  </form>
+                </div>
+                <details style="margin-top:0.5rem;">
+                  <summary>Edit</summary>
+                  <form method="post" action="/admin/restaurants/{{ r.restaurant_id }}/update" style="margin-top:0.6rem;min-width:260px;">
+                    <div class="form-group">
+                      <label>Name</label>
+                      <input name="name" value="{{ r.name }}" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Cuisine</label>
+                      <input name="cuisine_type" value="{{ r.cuisine_type }}" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Address</label>
+                      <input name="address" value="{{ r.address }}" class="form-control" required />
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label>Phone</label>
+                        <input name="phone" value="{{ r.phone }}" class="form-control" required />
+                      </div>
+                      <div class="form-group">
+                        <label>Min (min)</label>
+                        <input name="delivery_time_min" type="number" min="5" value="{{ r.delivery_time_min }}" class="form-control" required />
+                      </div>
+                      <div class="form-group">
+                        <label>Min Order</label>
+                        <input name="min_order_amount" type="number" step="0.01" min="0" value="{{ r.min_order_amount }}" class="form-control" required />
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label style="display:flex;align-items:center;gap:0.45rem;">
+                        <input type="checkbox" name="is_active" value="1" {% if r.is_active %}checked{% endif %} /> Active on Storefront
+                      </label>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm">Save Update</button>
+                  </form>
+                </details>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

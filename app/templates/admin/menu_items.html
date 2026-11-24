@@ -1,0 +1,134 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Manage Menu Items — BiteFlow Admin{% endblock %}
+{% block admin_content %}
+<div class="section-header">
+  <h1>Manage Menu Items</h1>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">Add New Menu Item (INSERT)</h3>
+    <form method="post" action="/admin/menu-items/create">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Restaurant</label>
+          <select name="restaurant_id" class="form-control" required>
+            {% for r in restaurants %}
+              <option value="{{ r.restaurant_id }}">{{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category_id" class="form-control" required>
+            {% for c in categories %}
+              <option value="{{ c.category_id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Item Name</label>
+          <input name="name" class="form-control" placeholder="e.g. Spicy Chicken Wings" required />
+        </div>
+        <div class="form-group">
+          <label>Price (TL)</label>
+          <input name="price" type="number" step="0.01" min="1" class="form-control" placeholder="195.00" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input name="description" class="form-control" placeholder="Ingredients and portion details" />
+      </div>
+      <button type="submit" class="btn btn-primary">+ Add Menu Item</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">All Menu Items ({{ items | length }})</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Dish</th>
+            <th>Restaurant</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Actions (UPDATE / DELETE)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in items %}
+            <tr>
+              <td>#{{ m.item_id }}</td>
+              <td>
+                <strong>{{ m.name }}</strong>
+                {% if m.description %}
+                  <div style="font-size:0.8rem;color:var(--muted);">{{ m.description }}</div>
+                {% endif %}
+              </td>
+              <td>{{ m.restaurant_name }}</td>
+              <td>{{ m.category_name }}</td>
+              <td><strong>{{ "%.2f"|format(m.price) }} TL</strong></td>
+              <td>
+                {% if m.is_available %}
+                  <span class="badge badge-active">Available</span>
+                {% else %}
+                  <span class="badge badge-inactive">Sold Out</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" action="/admin/menu-items/{{ m.item_id }}/delete" style="margin:0 0 0.45rem;">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete menu item {{ m.name }}?')">Delete</button>
+                </form>
+                <details>
+                  <summary>Edit</summary>
+                  <form method="post" action="/admin/menu-items/{{ m.item_id }}/update" style="margin-top:0.6rem;min-width:260px;">
+                    <div class="form-group">
+                      <label>Restaurant</label>
+                      <select name="restaurant_id" class="form-control">
+                        {% for r in restaurants %}
+                          <option value="{{ r.restaurant_id }}" {% if r.restaurant_id == m.restaurant_id %}selected{% endif %}>{{ r.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Category</label>
+                      <select name="category_id" class="form-control">
+                        {% for c in categories %}
+                          <option value="{{ c.category_id }}" {% if c.category_id == m.category_id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Name</label>
+                      <input name="name" value="{{ m.name }}" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Price (TL)</label>
+                      <input name="price" type="number" step="0.01" min="1" value="{{ m.price }}" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Description</label>
+                      <input name="description" value="{{ m.description or '' }}" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                      <label style="display:flex;align-items:center;gap:0.45rem;">
+                        <input type="checkbox" name="is_available" value="1" {% if m.is_available %}checked{% endif %} /> Available
+                      </label>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm">Save Update</button>
+                  </form>
+                </details>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

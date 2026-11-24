@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}My Orders — BiteFlow{% endblock %}
+{% block content %}
+<div class="section-header">
+  <div>
+    <h1>My Orders</h1>
+    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
+      Track your order history. You can update delivery notes or cancel any order while its status is <strong>Pending</strong>.
+    </p>
+  </div>
+  <a href="/" class="btn btn-primary">+ New Order</a>
+</div>
+
+{% if orders %}
+  <div style="display:flex;flex-direction:column;gap:1.1rem;">
+    {% for o in orders %}
+      <div class="card">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:0.85rem;">
+            <div>
+              <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                <strong style="font-size:1.1rem;">Order #{{ o.order_id }} — {{ o.restaurant_name }}</strong>
+                <span class="badge badge-{{ o.status | replace(' ', '') }}">{{ o.status }}</span>
+                {% if o.payment_status %}
+                  <span class="badge badge-{{ o.payment_status }}">{{ o.payment_method }} · {{ o.payment_status }}</span>
+                {% endif %}
+              </div>
+              <div style="font-size:0.84rem;color:var(--muted);margin-top:0.25rem;">
+                Placed on {{ o.order_date.strftime('%Y-%m-%d %H:%M') }}
+              </div>
+            </div>
+            <div style="font-size:1.25rem;font-weight:800;color:var(--brand);">
+              {{ "%.2f"|format(o.total_amount) }} TL
+            </div>
+          </div>
+
+          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;margin-bottom:0.85rem;font-size:0.9rem;">
+            <div><strong>Items:</strong> {{ o.items_summary or '—' }}</div>
+            <div style="margin-top:0.3rem;"><strong>Delivery Address:</strong> {{ o.delivery_address }}</div>
+            {% if o.notes %}
+              <div style="margin-top:0.3rem;"><strong>Notes:</strong> {{ o.notes }}</div>
+            {% endif %}
+          </div>
+
+          {% if o.status == 'Pending' %}
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+              <details style="flex:1;min-width:260px;">
+                <summary>Edit Delivery Address / Notes</summary>
+                <form method="post" action="/my-orders/{{ o.order_id }}/update" style="margin-top:0.75rem;">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Delivery Address</label>
+                      <input type="text" name="delivery_address" class="form-control" value="{{ o.delivery_address }}" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Notes</label>
+                      <input type="text" name="notes" class="form-control" value="{{ o.notes or '' }}" />
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-dark btn-sm">Update Order</button>
+                </form>
+              </details>
+
+              <form method="post" action="/my-orders/{{ o.order_id }}/delete" style="margin:0;">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Cancel and delete this pending order?')">
+                  Cancel Order
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:3rem;">
+      <h3 style="margin-top:0;">No orders yet</h3>
+      <p style="color:var(--muted);">Explore our restaurants and place your first order.</p>
+      <a href="/" class="btn btn-primary">Explore Restaurants</a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

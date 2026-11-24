@@ -1,0 +1,192 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Admin Dashboard — BiteFlow{% endblock %}
+{% block admin_content %}
+<div class="section-header">
+  <div>
+    <h1>Admin Dashboard &amp; SQL Insights</h1>
+    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
+      Live overview and execution of the 3 CMPE341 complex PostgreSQL queries.
+    </p>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Revenue (Non-Cancelled)</div>
+    <div class="kpi-value" style="color:var(--brand);">{{ "%.2f"|format(kpis.total_revenue) }} TL</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Orders</div>
+    <div class="kpi-value">{{ kpis.total_orders }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Active Restaurants</div>
+    <div class="kpi-value">{{ kpis.active_restaurants }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Registered Users</div>
+    <div class="kpi-value">{{ kpis.total_users }}</div>
+  </div>
+</div>
+
+<!-- Query 1: Multi-table JOIN -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <div class="section-header" style="margin-bottom:0.5rem;">
+      <div>
+        <h3 style="margin:0;">Query 1 — Multi-Table JOIN (Detailed Order Ledger)</h3>
+        <span style="font-size:0.84rem;color:var(--muted);">Joins <code>orders</code>, <code>users</code>, <code>restaurants</code>, <code>order_items</code>, <code>menu_items</code>, and <code>payments</code></span>
+      </div>
+      <span class="badge badge-Preparing">JOIN</span>
+    </div>
+    <details>
+      <summary>Show SQL Query</summary>
+      <pre class="sql-box">SELECT o.order_id, u.full_name AS customer_name, r.name AS restaurant_name,
+       STRING_AGG(m.name || ' (x' || oi.quantity || ')', ', ' ORDER BY m.name) AS ordered_items,
+       o.status AS order_status, p.payment_method, p.payment_status, o.total_amount
+FROM orders o
+INNER JOIN users u        ON o.user_id       = u.user_id
+INNER JOIN restaurants r  ON o.restaurant_id = r.restaurant_id
+INNER JOIN order_items oi ON o.order_id      = oi.order_id
+INNER JOIN menu_items m   ON oi.item_id      = m.item_id
+LEFT  JOIN payments p     ON o.order_id      = p.order_id
+GROUP BY o.order_id, u.full_name, r.name, o.status, p.payment_method, p.payment_status, o.total_amount
+ORDER BY o.order_date DESC;</pre>
+    </details>
+    <div class="table-wrap" style="margin-top:0.75rem;">
+      <table>
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Customer</th>
+            <th>Restaurant</th>
+            <th>Items</th>
+            <th>Status</th>
+            <th>Payment</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in q1_join %}
+            <tr>
+              <td><strong>#{{ row.order_id }}</strong></td>
+              <td>{{ row.customer_name }}</td>
+              <td>{{ row.restaurant_name }}</td>
+              <td style="font-size:0.85rem;">{{ row.ordered_items }}</td>
+              <td><span class="badge badge-{{ row.order_status | replace(' ', '') }}">{{ row.order_status }}</span></td>
+              <td style="font-size:0.84rem;">{{ row.payment_method }} · <span class="badge badge-{{ row.payment_status }}">{{ row.payment_status }}</span></td>
+              <td><strong>{{ "%.2f"|format(row.total_amount) }} TL</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Query 2: GROUP BY + ORDER BY -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <div class="section-header" style="margin-bottom:0.5rem;">
+      <div>
+        <h3 style="margin:0;">Query 2 — GROUP BY &amp; ORDER BY (Restaurant Revenue Ranking)</h3>
+        <span style="font-size:0.84rem;color:var(--muted);">Aggregates order count, total revenue, average order value, and average rating per restaurant</span>
+      </div>
+      <span class="badge badge-Delivered">GROUP BY + ORDER BY</span>
+    </div>
+    <details>
+      <summary>Show SQL Query</summary>
+      <pre class="sql-box">SELECT r.restaurant_id, r.name AS restaurant_name, r.cuisine_type,
+       COUNT(o.order_id) AS total_orders,
+       COALESCE(SUM(o.total_amount), 0.00) AS total_revenue,
+       COALESCE(ROUND(AVG(o.total_amount), 2), 0.00) AS avg_order_value,
+       COALESCE(rev_stats.avg_rating, 0.00) AS avg_rating
+FROM restaurants r
+LEFT JOIN orders o ON r.restaurant_id = o.restaurant_id AND o.status &lt;&gt; 'Cancelled'
+LEFT JOIN (SELECT restaurant_id, ROUND(AVG(rating), 2) AS avg_rating FROM reviews GROUP BY restaurant_id) rev_stats
+       ON r.restaurant_id = rev_stats.restaurant_id
+GROUP BY r.restaurant_id, r.name, r.cuisine_type, rev_stats.avg_rating
+ORDER BY total_revenue DESC, avg_rating DESC;</pre>
+    </details>
+    <div class="table-wrap" style="margin-top:0.75rem;">
+      <table>
+        <thead>
+          <tr>
+            <th>Restaurant</th>
+            <th>Cuisine</th>
+            <th>Orders</th>
+            <th>Total Revenue</th>
+            <th>Avg. Order</th>
+            <th>Avg. Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in q2_groupby %}
+            <tr>
+              <td><strong>{{ row.restaurant_name }}</strong></td>
+              <td>{{ row.cuisine_type }}</td>
+              <td>{{ row.total_orders }}</td>
+              <td><strong style="color:var(--brand);">{{ "%.2f"|format(row.total_revenue) }} TL</strong></td>
+              <td>{{ "%.2f"|format(row.avg_order_value) }} TL</td>
+              <td>★ {{ "%.2f"|format(row.avg_rating) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Query 3: Subquery -->
+<div class="card">
+  <div class="card-body">
+    <div class="section-header" style="margin-bottom:0.5rem;">
+      <div>
+        <h3 style="margin:0;">Query 3 — Subquery (Top-Spending Customers Above Platform Average)</h3>
+        <span style="font-size:0.84rem;color:var(--muted);">Identifies customers whose total spending exceeds the average spending across all ordering customers</span>
+      </div>
+      <span class="badge badge-admin">SUBQUERY</span>
+    </div>
+    <details>
+      <summary>Show SQL Query</summary>
+      <pre class="sql-box">SELECT u.user_id, u.username, u.full_name,
+       COUNT(o.order_id) AS order_count, SUM(o.total_amount) AS total_spent
+FROM users u
+INNER JOIN orders o ON u.user_id = o.user_id
+WHERE o.status &lt;&gt; 'Cancelled'
+GROUP BY u.user_id, u.username, u.full_name
+HAVING SUM(o.total_amount) &gt; (
+    SELECT AVG(customer_total)
+    FROM (SELECT SUM(total_amount) AS customer_total FROM orders WHERE status &lt;&gt; 'Cancelled' GROUP BY user_id) AS avg_calc
+)
+ORDER BY total_spent DESC;</pre>
+    </details>
+    <div class="table-wrap" style="margin-top:0.75rem;">
+      <table>
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Orders</th>
+            <th>Total Spent</th>
+            <th>Platform Avg.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in q3_subquery %}
+            <tr>
+              <td>#{{ row.user_id }}</td>
+              <td><code>{{ row.username }}</code></td>
+              <td><strong>{{ row.full_name }}</strong></td>
+              <td>{{ row.order_count }}</td>
+              <td><strong style="color:var(--brand);">{{ "%.2f"|format(row.total_spent) }} TL</strong></td>
+              <td>{{ "%.2f"|format(row.avg_customer_spending) }} TL</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

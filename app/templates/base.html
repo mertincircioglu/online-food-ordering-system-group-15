@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}BiteFlow — Online Food Ordering System{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">🍽</span>
+        <span>BiteFlow</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Explore</a>
+        {% if user %}
+          <a href="/my-orders" class="nav-link {% if request.url.path.startswith('/my-orders') %}active{% endif %}">My Orders</a>
+          <a href="/profile" class="nav-link {% if request.url.path.startswith('/profile') %}active{% endif %}">Profile</a>
+          {% if user.role == 'admin' %}
+            <a href="/admin" class="nav-link {% if request.url.path.startswith('/admin') %}active{% endif %}">Admin Panel</a>
+          {% endif %}
+          <div class="nav-user">
+            <span class="badge badge-{{ user.role }}">{{ user.role | upper }}</span>
+            <span style="font-size:0.88rem;font-weight:600;">{{ user.username }}</span>
+            <form method="post" action="/logout" style="margin:0;">
+              <button type="submit" class="btn btn-secondary btn-sm">Sign Out</button>
+            </form>
+          </div>
+        {% else %}
+          <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+          <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  {% block body %}
+  <main class="container">
+    {% if flashes %}
+      <div class="flash-stack">
+        {% for f in flashes %}
+          <div class="alert alert-{{ f.category }}">
+            <span>{{ f.message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% endblock %}
+
+  <footer class="footer">
+    <strong>BiteFlow</strong> — Online Food Ordering System · CMPE341 Database Design &amp; Management (Group 15) · Powered by PostgreSQL &amp; FastAPI
+  </footer>
+</body>
+</html>

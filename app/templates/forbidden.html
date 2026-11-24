@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}403 Forbidden — BiteFlow{% endblock %}
+{% block content %}
+<div class="card" style="max-width:540px;margin:3rem auto;text-align:center;">
+  <div class="card-body" style="padding:2.5rem;">
+    <div style="font-size:3rem;margin-bottom:0.5rem;">🔒</div>
+    <h1 style="margin:0 0 0.5rem;">403 — Access Restricted</h1>
+    <p style="color:var(--muted);margin-bottom:1.5rem;">
+      This section requires <strong>Administrator</strong> privileges. You are currently signed in as a
+      <strong>{{ user.role }}</strong> (<code>{{ user.username }}</code>).
+    </p>
+    <div class="inline-actions" style="justify-content:center;">
+      <a href="/" class="btn btn-primary">Return to Storefront</a>
+      <a href="/my-orders" class="btn btn-secondary">View My Orders</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
