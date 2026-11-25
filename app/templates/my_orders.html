@@ -75,6 +75,15 @@
                 </button>
               </form>
             </div>
+          {% elif o.can_late_cancel %}
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:0.75rem 1rem;">
+              <span style="font-size:0.86rem;color:#991b1b;">More than 1 hour has passed since ordering without delivery. Per platform policy, you may cancel this order.</span>
+              <form method="post" action="/my-orders/{{ o.order_id }}/delete" style="margin:0;">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Cancel delayed Order #{{ o.order_id }}?')">
+                  Cancel Delayed Order (&gt;1h)
+                </button>
+              </form>
+            </div>
           {% elif o.order_status == 'Delivered' %}
             {% if o.restaurant_review_id %}
               <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:0.8rem 1rem;">

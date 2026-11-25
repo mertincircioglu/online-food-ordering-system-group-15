@@ -1,6 +1,7 @@
 import math
 import os
-from decimal import Decimal, ROUND_HALF_UP
+import re
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Optional
 
 from fastapi import FastAPI, Form, Request
@@ -30,6 +31,24 @@ PAYMENT_METHODS = ["Online", "Card at the door", "Cash at the door"]
 ORDER_STATUSES = ["Order Confirmed", "Preparing", "On the way", "Delivered", "Cancelled"]
 PRODUCT_CATEGORIES = ["Main Course", "Drinks", "Sweets", "Other"]
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+PHONE_RE = re.compile(r"^[0-9]{10,15}$")
+
+
+def is_valid_email(value: str) -> bool:
+    return bool(EMAIL_RE.fullmatch(value.strip()))
+
+
+def is_valid_phone(value: str) -> bool:
+    return bool(PHONE_RE.fullmatch(value.strip()))
+
+
+def safe_decimal(value, default=None):
+    try:
+        return Decimal(str(value).strip())
+    except (InvalidOperation, ValueError, TypeError):
+        return default
 
 
 def render(request: Request, template_name: str, context: dict = None, status_code: int = 200):
@@ -194,6 +213,13 @@ def register_submit(
     street: str = Form(...),
 ):
     email_clean = email.strip().lower()
+    phone_clean = phone_number.strip()
+    if not is_valid_email(email_clean):
+        flash(request, "Please enter a valid email address (e.g. name@example.com).", "error")
+        return RedirectResponse("/register", status_code=303)
+    if not is_valid_phone(phone_clean):
+        flash(request, "Phone number must contain digits only (10 to 15 digits, e.g. 05321234567).", "error")
+        return RedirectResponse("/register", status_code=303)
     if len(password) < 6:
         flash(request, "Password must be at least 6 characters long.", "error")
         return RedirectResponse("/register", status_code=303)
@@ -361,7 +387,12 @@ def home(
 
 
 @app.get("/restaurants/{restaurant_id}", response_class=HTMLResponse)
-def restaurant_detail(request: Request, restaurant_id: int, category: Optional[str] = None):
+def restaurant_detail(
+    request: Request,
+    restaurant_id: int,
+    category: Optional[str] = None,
+    discount: Optional[str] = None,
+):
     user = get_current_user(request)
     restaurant = fetch_one(
         """
@@ -406,6 +437,8 @@ def restaurant_detail(request: Request, restaurant_id: int, category: Optional[s
     if category:
         prod_sql += " AND category = %s"
         prod_params.append(category)
+    if discount == "1":
+        prod_sql += " AND discount_available = TRUE"
     prod_sql += " ORDER BY category, product_name"
     products = fetch_all(prod_sql, prod_params)
     for p in products:
@@ -447,6 +480,7 @@ def restaurant_detail(request: Request, restaurant_id: int, category: Optional[s
             "products": products,
             "categories": PRODUCT_CATEGORIES,
             "selected_category": category or "",
+            "discount_only": discount == "1",
             "reviews": reviews,
             "saved_addresses": saved_addresses,
             "payment_methods": PAYMENT_METHODS,
@@ -628,7 +662,11 @@ def my_orders(request: Request):
             STRING_AGG(p.product_name || ' × ' || oi.quantity, ', ' ORDER BY p.product_name) AS items_summary,
             rev.restaurant_review_id,
             rev.rating  AS review_rating,
-            rev.comment AS review_comment
+            rev.comment AS review_comment,
+            (
+                o.order_status IN ('Preparing', 'On the way')
+                AND EXTRACT(EPOCH FROM (NOW() - o.order_date)) >= 3600
+            ) AS can_late_cancel
         FROM orders o
         INNER JOIN restaurant r      ON o.restaurant_id       = r.restaurant_id
         LEFT  JOIN address a         ON o.delivery_address_id = a.address_id
@@ -705,8 +743,28 @@ def delete_my_order(request: Request, order_id: int):
     )
     if deleted:
         flash(request, f"Order #{order_id} cancelled and removed.", "info")
+        return RedirectResponse("/my-orders", status_code=303)
+
+    # Business Rule: customer may cancel if >= 1 hour passed and order is still not Delivered
+    late_cancelled = execute_query(
+        """
+        UPDATE orders
+        SET order_status = 'Cancelled'
+        WHERE order_id = %s
+          AND customer_id = %s
+          AND order_status IN ('Preparing', 'On the way')
+          AND EXTRACT(EPOCH FROM (NOW() - order_date)) >= 3600
+        """,
+        (order_id, user["customer_id"]),
+    )
+    if late_cancelled:
+        flash(request, f"Delayed Order #{order_id} (>1 hour) has been cancelled.", "info")
     else:
-        flash(request, "Only orders in 'Order Confirmed' status can be cancelled.", "warning")
+        flash(
+            request,
+            "Orders can only be cancelled while 'Order Confirmed' or if more than 1 hour has passed without delivery.",
+            "warning",
+        )
     return RedirectResponse("/my-orders", status_code=303)
 
 
@@ -833,6 +891,7 @@ def profile_page(request: Request):
 @app.post("/profile")
 def profile_update(
     request: Request,
+    email: str = Form(...),
     first_name: str = Form(...),
     middle_name: str = Form(""),
     last_name: str = Form(...),
@@ -843,22 +902,64 @@ def profile_update(
     if redirect:
         return redirect
 
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE member
-                SET first_name = %s, middle_name = %s, last_name = %s, phone_number = %s
-                WHERE member_id = %s
-                """,
-                (first_name.strip(), middle_name.strip() or None, last_name.strip(), phone_number.strip(), user["member_id"]),
-            )
-            if user["customer_id"] and gender:
+    email_clean = email.strip().lower()
+    phone_clean = phone_number.strip()
+    if not is_valid_email(email_clean):
+        flash(request, "Please enter a valid email address (e.g. name@example.com).", "error")
+        return RedirectResponse("/profile", status_code=303)
+    if not is_valid_phone(phone_clean):
+        flash(request, "Phone number must contain digits only (10 to 15 digits).", "error")
+        return RedirectResponse("/profile", status_code=303)
+
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
                 cur.execute(
-                    "UPDATE customer SET gender = %s WHERE customer_id = %s",
-                    (gender, user["customer_id"]),
+                    """
+                    UPDATE member
+                    SET email = %s, first_name = %s, middle_name = %s, last_name = %s, phone_number = %s
+                    WHERE member_id = %s
+                    """,
+                    (email_clean, first_name.strip(), middle_name.strip() or None, last_name.strip(), phone_clean, user["member_id"]),
                 )
-    flash(request, "Account information updated.", "success")
+                if user["customer_id"] and gender:
+                    cur.execute(
+                        "UPDATE customer SET gender = %s WHERE customer_id = %s",
+                        (gender, user["customer_id"]),
+                    )
+        flash(request, "Account information updated.", "success")
+    except pg_errors.UniqueViolation:
+        flash(request, "That email address is already used by another account.", "error")
+    return RedirectResponse("/profile", status_code=303)
+
+
+@app.post("/profile/password")
+def profile_password_update(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    user, redirect = require_login(request)
+    if redirect:
+        return redirect
+
+    row = fetch_one("SELECT password_hash FROM member WHERE member_id = %s", (user["member_id"],))
+    if not row or not verify_password(current_password, row["password_hash"]):
+        flash(request, "Current password is incorrect.", "error")
+        return RedirectResponse("/profile", status_code=303)
+    if len(new_password) < 6:
+        flash(request, "New password must be at least 6 characters long.", "error")
+        return RedirectResponse("/profile", status_code=303)
+    if new_password != confirm_password:
+        flash(request, "New passwords do not match.", "error")
+        return RedirectResponse("/profile", status_code=303)
+
+    execute_query(
+        "UPDATE member SET password_hash = %s WHERE member_id = %s",
+        (hash_password(new_password), user["member_id"]),
+    )
+    flash(request, "Password updated and securely hashed with bcrypt.", "success")
     return RedirectResponse("/profile", status_code=303)
 
 
@@ -912,6 +1013,56 @@ def customer_address_create(
                 (user["customer_id"], aid),
             )
     flash(request, "Saved delivery address added.", "success")
+    return RedirectResponse("/profile", status_code=303)
+
+
+@app.post("/profile/addresses/{address_id}/update")
+def customer_address_update(
+    request: Request,
+    address_id: int,
+    address_title: str = Form(""),
+    province: str = Form("Ankara"),
+    district: str = Form(...),
+    subdistrict: str = Form(...),
+    neighborhood: str = Form(...),
+    street: str = Form(...),
+    floor: str = Form(""),
+    building_no: str = Form(""),
+    details: str = Form(""),
+):
+    user, blocked = require_customer(request)
+    if blocked:
+        return blocked
+
+    owns = fetch_one(
+        "SELECT 1 FROM customer_address WHERE customer_id = %s AND address_id = %s",
+        (user["customer_id"], address_id),
+    )
+    if not owns:
+        flash(request, "You cannot edit this address.", "error")
+        return RedirectResponse("/profile", status_code=303)
+
+    execute_query(
+        """
+        UPDATE address
+        SET address_title = %s, province = %s, district = %s, subdistrict = %s,
+            neighborhood = %s, street = %s, floor = %s, building_no = %s, details = %s
+        WHERE address_id = %s
+        """,
+        (
+            address_title.strip() or None,
+            province.strip(),
+            district.strip(),
+            subdistrict.strip(),
+            neighborhood.strip(),
+            street.strip(),
+            floor.strip() or None,
+            building_no.strip() or None,
+            details.strip() or None,
+            address_id,
+        ),
+    )
+    flash(request, "Saved delivery address updated.", "success")
     return RedirectResponse("/profile", status_code=303)
 
 
@@ -1005,6 +1156,15 @@ def manager_dashboard(request: Request):
             (rid,),
         )
     ]
+    working_hours = fetch_all(
+        """
+        SELECT day, opening_time, closing_time
+        FROM restaurant_working_hours
+        WHERE restaurant_id = %s
+        ORDER BY ARRAY_POSITION(ARRAY['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], day)
+        """,
+        (rid,),
+    )
     reviews = fetch_all(
         """
         SELECT rev.*, m.first_name, m.last_name
@@ -1026,9 +1186,36 @@ def manager_dashboard(request: Request):
             "cuisines_str": ", ".join(cuisines),
             "selected_delivery_types": delivery_types,
             "all_delivery_types": DELIVERY_TYPES,
+            "working_hours": working_hours,
             "reviews": reviews,
         },
     )
+
+
+@app.post("/manager/working-hours/update")
+async def manager_working_hours_update(request: Request):
+    user, blocked = require_manager(request)
+    if blocked:
+        return blocked
+
+    rid = user["managed_restaurant_id"]
+    form = await request.form()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for day in DAYS_OF_WEEK:
+                open_t = str(form.get(f"open_{day}", "10:00")).strip()
+                close_t = str(form.get(f"close_{day}", "23:00")).strip()
+                cur.execute(
+                    """
+                    INSERT INTO restaurant_working_hours (restaurant_id, day, opening_time, closing_time)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (restaurant_id, day)
+                    DO UPDATE SET opening_time = EXCLUDED.opening_time, closing_time = EXCLUDED.closing_time
+                    """,
+                    (rid, day, open_t, close_t),
+                )
+    flash(request, "Weekly working hours updated.", "success")
+    return RedirectResponse("/manager", status_code=303)
 
 
 @app.post("/manager/restaurant/update")
@@ -1041,10 +1228,20 @@ async def manager_restaurant_update(request: Request):
     form = await request.form()
     name = str(form.get("name", "")).strip()
     phone_number = str(form.get("phone_number", "")).strip()
-    email = str(form.get("email", "")).strip()
-    min_order_amount = Decimal(str(form.get("min_order_amount", "0")))
+    email = str(form.get("email", "")).strip().lower()
+    min_order_amount = safe_decimal(form.get("min_order_amount", "0"))
     cuisines_raw = str(form.get("cuisines", ""))
     selected_dt = form.getlist("delivery_types")
+
+    if not is_valid_phone(phone_number):
+        flash(request, "Phone number must contain digits only (10 to 15 digits).", "error")
+        return RedirectResponse("/manager", status_code=303)
+    if not is_valid_email(email):
+        flash(request, "Please enter a valid restaurant email address.", "error")
+        return RedirectResponse("/manager", status_code=303)
+    if min_order_amount is None or min_order_amount < 0:
+        flash(request, "Minimum order amount must be 0 or greater.", "error")
+        return RedirectResponse("/manager", status_code=303)
 
     cuisines = [c.strip() for c in cuisines_raw.split(",") if c.strip()]
     if not selected_dt:
@@ -1117,7 +1314,7 @@ def manager_product_create(
         return blocked
 
     disc_flag = bool(discount_available)
-    disc_pct = Decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
+    disc_pct = safe_decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
     if disc_flag and (disc_pct is None or disc_pct <= 0 or disc_pct > 90):
         disc_flag = False
         disc_pct = None
@@ -1161,7 +1358,7 @@ def manager_product_update(
         return blocked
 
     disc_flag = bool(discount_available)
-    disc_pct = Decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
+    disc_pct = safe_decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
     if disc_flag and (disc_pct is None or disc_pct <= 0 or disc_pct > 90):
         disc_flag = False
         disc_pct = None
@@ -1398,6 +1595,20 @@ def admin_dashboard(request: Request):
         """
     )
 
+    table_stats = fetch_all(
+        """
+        SELECT
+            table_name,
+            (xpath('/row/cnt/text()', query_to_xml(
+                format('SELECT count(*) AS cnt FROM %%I.%%I', table_schema, table_name),
+                false, true, ''
+            )))[1]::text::int AS row_count
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+        """
+    )
+
     return render(
         request,
         "admin/dashboard.html",
@@ -1407,6 +1618,7 @@ def admin_dashboard(request: Request):
             "q1_join": q1_join,
             "q2_groupby": q2_groupby,
             "q3_subquery": q3_subquery,
+            "table_stats": table_stats,
         },
     )
 
@@ -1462,8 +1674,8 @@ async def admin_restaurant_create(request: Request):
     form = await request.form()
     name = str(form.get("name", "")).strip()
     phone_number = str(form.get("phone_number", "")).strip()
-    email = str(form.get("email", "")).strip()
-    min_order_amount = Decimal(str(form.get("min_order_amount", "100")))
+    email = str(form.get("email", "")).strip().lower()
+    min_order_amount = safe_decimal(form.get("min_order_amount", "100"))
     province = str(form.get("province", "Ankara")).strip()
     district = str(form.get("district", "")).strip()
     subdistrict = str(form.get("subdistrict", "")).strip()
@@ -1471,6 +1683,16 @@ async def admin_restaurant_create(request: Request):
     street = str(form.get("street", "")).strip()
     cuisines = [c.strip() for c in str(form.get("cuisines", "Turkish")).split(",") if c.strip()]
     selected_dt = form.getlist("delivery_types") or ["Platform_carrier"]
+
+    if not is_valid_phone(phone_number):
+        flash(request, "Phone number must contain digits only (10 to 15 digits).", "error")
+        return RedirectResponse("/admin/restaurants", status_code=303)
+    if not is_valid_email(email):
+        flash(request, "Please enter a valid restaurant email address.", "error")
+        return RedirectResponse("/admin/restaurants", status_code=303)
+    if min_order_amount is None or min_order_amount < 0:
+        flash(request, "Minimum order amount must be 0 or greater.", "error")
+        return RedirectResponse("/admin/restaurants", status_code=303)
 
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -1529,13 +1751,24 @@ def admin_restaurant_update(
     user, blocked = require_admin(request)
     if blocked:
         return blocked
+    phone_clean = phone_number.strip()
+    email_clean = email.strip().lower()
+    if not is_valid_phone(phone_clean):
+        flash(request, "Phone number must contain digits only (10 to 15 digits).", "error")
+        return RedirectResponse("/admin/restaurants", status_code=303)
+    if not is_valid_email(email_clean):
+        flash(request, "Please enter a valid restaurant email address.", "error")
+        return RedirectResponse("/admin/restaurants", status_code=303)
+    if min_order_amount < 0:
+        flash(request, "Minimum order amount cannot be negative.", "error")
+        return RedirectResponse("/admin/restaurants", status_code=303)
     execute_query(
         """
         UPDATE restaurant
         SET name = %s, phone_number = %s, email = %s, min_order_amount = %s
         WHERE restaurant_id = %s
         """,
-        (name.strip(), phone_number.strip(), email.strip(), min_order_amount, restaurant_id),
+        (name.strip(), phone_clean, email_clean, min_order_amount, restaurant_id),
     )
     flash(request, f"Restaurant #{restaurant_id} updated.", "success")
     return RedirectResponse("/admin/restaurants", status_code=303)
@@ -1595,7 +1828,7 @@ def admin_product_create(
     if blocked:
         return blocked
     disc_flag = bool(discount_available)
-    disc_pct = Decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
+    disc_pct = safe_decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
     if disc_flag and (disc_pct is None or disc_pct <= 0 or disc_pct > 90):
         disc_flag = False
         disc_pct = None
@@ -1631,7 +1864,7 @@ def admin_product_update(
     if blocked:
         return blocked
     disc_flag = bool(discount_available)
-    disc_pct = Decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
+    disc_pct = safe_decimal(discount_percentage) if (disc_flag and discount_percentage.strip()) else None
     if disc_flag and (disc_pct is None or disc_pct <= 0 or disc_pct > 90):
         disc_flag = False
         disc_pct = None
@@ -1799,6 +2032,17 @@ def admin_create_manager(
     user, blocked = require_admin(request)
     if blocked:
         return blocked
+    email_clean = email.strip().lower()
+    phone_clean = phone_number.strip()
+    if not is_valid_email(email_clean):
+        flash(request, "Please enter a valid email address for the manager.", "error")
+        return RedirectResponse("/admin/members", status_code=303)
+    if not is_valid_phone(phone_clean):
+        flash(request, "Phone number must contain digits only (10 to 15 digits).", "error")
+        return RedirectResponse("/admin/members", status_code=303)
+    if len(password) < 6:
+        flash(request, "Password must be at least 6 characters long.", "error")
+        return RedirectResponse("/admin/members", status_code=303)
     try:
         with get_db() as conn:
             with conn.cursor() as cur:
@@ -1808,7 +2052,7 @@ def admin_create_manager(
                     VALUES (%s, %s, %s, %s, %s)
                     RETURNING member_id
                     """,
-                    (email.strip().lower(), first_name.strip(), last_name.strip(), hash_password(password), phone_number.strip()),
+                    (email_clean, first_name.strip(), last_name.strip(), hash_password(password), phone_clean),
                 )
                 mid = cur.fetchone()["member_id"]
                 cur.execute(

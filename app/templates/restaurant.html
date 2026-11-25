@@ -45,10 +45,15 @@
 </div>
 
 <div class="chip-row" style="margin-bottom:1.25rem;">
-  <a href="/restaurants/{{ restaurant.restaurant_id }}" class="chip {% if not selected_category %}active{% endif %}">All Categories</a>
+  <a href="/restaurants/{{ restaurant.restaurant_id }}{% if discount_only %}?discount=1{% endif %}" class="chip {% if not selected_category %}active{% endif %}">All Categories</a>
   {% for cat in categories %}
-    <a href="/restaurants/{{ restaurant.restaurant_id }}?category={{ cat | urlencode }}" class="chip {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
+    <a href="/restaurants/{{ restaurant.restaurant_id }}?category={{ cat | urlencode }}{% if discount_only %}&discount=1{% endif %}" class="chip {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
   {% endfor %}
+  <a href="/restaurants/{{ restaurant.restaurant_id }}?{% if selected_category %}category={{ selected_category | urlencode }}&{% endif %}{% if not discount_only %}discount=1{% endif %}"
+     class="chip {% if discount_only %}active{% endif %}"
+     style="{% if not discount_only %}border-color:#86efac;color:#15803d;{% endif %}">
+    🔥 Active Discounts
+  </a>
 </div>
 
 <form method="post" action="/restaurants/{{ restaurant.restaurant_id }}/order" id="orderForm">

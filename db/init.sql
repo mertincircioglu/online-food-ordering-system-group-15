@@ -11,12 +11,14 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ----------------------------------------------------------------------------
 CREATE TABLE member (
     member_id     SERIAL PRIMARY KEY,
-    email         VARCHAR(120) NOT NULL UNIQUE,
+    email         VARCHAR(120) NOT NULL UNIQUE
+                  CHECK (email ~* '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$'),
     first_name    VARCHAR(60)  NOT NULL,
     middle_name   VARCHAR(60),
     last_name     VARCHAR(60)  NOT NULL,
     password_hash TEXT         NOT NULL,
-    phone_number  VARCHAR(25)  NOT NULL,
+    phone_number  VARCHAR(15)  NOT NULL
+                  CHECK (phone_number ~ '^[0-9]{10,15}$'),
     is_banned     BOOLEAN      NOT NULL DEFAULT FALSE
 );
 
@@ -81,8 +83,10 @@ CREATE TABLE restaurant (
     restaurant_id    SERIAL PRIMARY KEY,
     address_id       INT            NOT NULL UNIQUE REFERENCES address(address_id) ON DELETE RESTRICT,
     name             VARCHAR(100)   NOT NULL,
-    phone_number     VARCHAR(25)    NOT NULL,
-    email            VARCHAR(120)   NOT NULL,
+    phone_number     VARCHAR(15)    NOT NULL
+                     CHECK (phone_number ~ '^[0-9]{10,15}$'),
+    email            VARCHAR(120)   NOT NULL
+                     CHECK (email ~* '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$'),
     min_order_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (min_order_amount >= 0)
 );
 
@@ -202,17 +206,17 @@ CREATE INDEX idx_review_restaurant  ON restaurant_review(restaurant_id);
 
 -- 1. Members (11 total: 3 Admins, 4 Restaurant Managers, 4 Customers)
 INSERT INTO member (email, first_name, middle_name, last_name, password_hash, phone_number) VALUES
-('admin@biteflow.com',       'System',  NULL,   'Admin',        crypt('admin123',    gen_salt('bf', 12)), '+90 532 100 0001'),
-('ops@biteflow.com',         'Deniz',   'Alp',  'Kaya',         crypt('admin123',    gen_salt('bf', 12)), '+90 532 100 0002'),
-('support@biteflow.com',     'Elif',    NULL,   'Aydin',        crypt('admin123',    gen_salt('bf', 12)), '+90 532 100 0003'),
-('manager1@biteflow.com',    'Kerem',   NULL,   'Ozturk',       crypt('manager123',  gen_salt('bf', 12)), '+90 532 300 0001'),
-('manager2@biteflow.com',    'Marco',   'Luca', 'Rossi',        crypt('manager123',  gen_salt('bf', 12)), '+90 532 300 0002'),
-('manager3@biteflow.com',    'Burak',   NULL,   'Arslan',       crypt('manager123',  gen_salt('bf', 12)), '+90 532 300 0003'),
-('manager4@biteflow.com',    'Kenji',   NULL,   'Tanaka',       crypt('manager123',  gen_salt('bf', 12)), '+90 532 300 0004'),
-('customer1@atilim.edu.tr',  'Mert',    NULL,   'Incircioglu',  crypt('customer123', gen_salt('bf', 12)), '+90 533 200 1001'),
-('ayse@atilim.edu.tr',       'Ayse',    'Nur',  'Demir',        crypt('customer123', gen_salt('bf', 12)), '+90 533 200 1002'),
-('can@atilim.edu.tr',        'Can',     NULL,   'Yilmaz',       crypt('customer123', gen_salt('bf', 12)), '+90 533 200 1003'),
-('zeynep@atilim.edu.tr',     'Zeynep',  NULL,   'Celik',        crypt('customer123', gen_salt('bf', 12)), '+90 533 200 1004');
+('admin@biteflow.com',       'System',  NULL,   'Admin',        crypt('admin123',    gen_salt('bf', 12)), '05321000001'),
+('ops@biteflow.com',         'Deniz',   'Alp',  'Kaya',         crypt('admin123',    gen_salt('bf', 12)), '05321000002'),
+('support@biteflow.com',     'Elif',    NULL,   'Aydin',        crypt('admin123',    gen_salt('bf', 12)), '05321000003'),
+('manager1@biteflow.com',    'Kerem',   NULL,   'Ozturk',       crypt('manager123',  gen_salt('bf', 12)), '05323000001'),
+('manager2@biteflow.com',    'Marco',   'Luca', 'Rossi',        crypt('manager123',  gen_salt('bf', 12)), '05323000002'),
+('manager3@biteflow.com',    'Burak',   NULL,   'Arslan',       crypt('manager123',  gen_salt('bf', 12)), '05323000003'),
+('manager4@biteflow.com',    'Kenji',   NULL,   'Tanaka',       crypt('manager123',  gen_salt('bf', 12)), '05323000004'),
+('customer1@atilim.edu.tr',  'Mert',    NULL,   'Incircioglu',  crypt('customer123', gen_salt('bf', 12)), '05332001001'),
+('ayse@atilim.edu.tr',       'Ayse',    'Nur',  'Demir',        crypt('customer123', gen_salt('bf', 12)), '05332001002'),
+('can@atilim.edu.tr',        'Can',     NULL,   'Yilmaz',       crypt('customer123', gen_salt('bf', 12)), '05332001003'),
+('zeynep@atilim.edu.tr',     'Zeynep',  NULL,   'Celik',        crypt('customer123', gen_salt('bf', 12)), '05332001004');
 
 -- 2. Admins (3 records)
 INSERT INTO admin (member_id) VALUES (1), (2), (3);
@@ -256,11 +260,11 @@ INSERT INTO customer_payment_info (customer_id, saved_payment_info) VALUES
 
 -- 7. Restaurants (5 records)
 INSERT INTO restaurant (address_id, name, phone_number, email, min_order_amount) VALUES
-(1, 'Anatolia Grill House',     '+90 312 460 1100', 'contact@anatoliagrill.com', 150.00),
-(2, 'Napoli Woodfire Pizzeria', '+90 312 428 2200', 'hello@napoliwoodfire.com',  180.00),
-(3, 'Smash & Craft Burgers',    '+90 312 215 3300', 'order@smashcraft.com',      160.00),
-(4, 'Sakura Sushi Bar',         '+90 312 446 4400', 'info@sakurasushi.com',      250.00),
-(5, 'Green Bowl Kitchen',       '+90 312 240 5500', 'fresh@greenbowl.com',       120.00);
+(1, 'Anatolia Grill House',     '03124601100', 'contact@anatoliagrill.com', 150.00),
+(2, 'Napoli Woodfire Pizzeria', '03124282200', 'hello@napoliwoodfire.com',  180.00),
+(3, 'Smash & Craft Burgers',    '03122153300', 'order@smashcraft.com',      160.00),
+(4, 'Sakura Sushi Bar',         '03124464400', 'info@sakurasushi.com',      250.00),
+(5, 'Green Bowl Kitchen',       '03122405500', 'fresh@greenbowl.com',       120.00);
 
 -- 8. Restaurant Managers (4 records)
 INSERT INTO restaurant_manager (member_id, restaurant_id) VALUES
