@@ -1,0 +1,56 @@
+{% extends "manager/base_manager.html" %}
+{% block title %}Incoming Orders — Manager Portal{% endblock %}
+{% block manager_content %}
+<div class="section-header">
+  <h1>Incoming Orders</h1>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Customer &amp; Delivery</th>
+            <th>Products</th>
+            <th>Total</th>
+            <th>Update Order Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+            <tr>
+              <td>
+                <strong>#{{ o.order_id }}</strong>
+                <div style="font-size:0.78rem;color:var(--muted);">{{ o.order_date.strftime('%Y-%m-%d %H:%M') }}</div>
+              </td>
+              <td>
+                <strong>{{ o.customer_name }}</strong> ({{ o.customer_phone }})
+                <div style="font-size:0.8rem;color:var(--muted);">{{ o.delivery_type | replace('_', ' ') }} · {{ o.delivery_location }}</div>
+              </td>
+              <td style="font-size:0.85rem;">{{ o.items_summary }}</td>
+              <td>
+                <strong>{{ "%.2f"|format(o.total_price) }} TL</strong>
+                <div style="font-size:0.78rem;color:var(--muted);">{{ o.payment_method }}</div>
+              </td>
+              <td>
+                <form method="post" action="/manager/orders/{{ o.order_id }}/update" class="inline-actions" style="margin:0;">
+                  <select name="order_status" class="form-control" style="width:auto;padding:0.38rem 0.6rem;font-size:0.84rem;">
+                    {% for st in order_statuses %}
+                      <option value="{{ st }}" {% if o.order_status == st %}selected{% endif %}>{{ st }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-dark btn-sm">Update</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem;">No orders for your restaurant yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Moderate Reviews — BiteFlow Admin{% endblock %}
+{% block admin_content %}
+<div class="section-header">
+  <h1>Moderate Restaurant Reviews</h1>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">All Reviews ({{ reviews | length }})</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Order #</th>
+            <th>Restaurant</th>
+            <th>Customer</th>
+            <th>Rating &amp; Comment</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rev in reviews %}
+            <tr>
+              <td>#{{ rev.restaurant_review_id }}</td>
+              <td>#{{ rev.order_id }}</td>
+              <td><strong>{{ rev.restaurant_name }}</strong></td>
+              <td>
+                <strong>{{ rev.customer_name }}</strong>
+                <div style="font-size:0.78rem;color:var(--muted);">{{ rev.customer_email }}</div>
+              </td>
+              <td>
+                <span class="badge" style="background:#fff7ed;color:#ea580c;">★ {{ rev.rating }} / 5</span>
+                <div style="font-size:0.86rem;margin-top:0.25rem;">{{ rev.comment or '—' }}</div>
+              </td>
+              <td>
+                <form method="post" action="/admin/reviews/{{ rev.restaurant_review_id }}/delete" style="margin:0;">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove review #{{ rev.restaurant_review_id }}?')">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">No reviews found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

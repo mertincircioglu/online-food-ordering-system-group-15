@@ -6,12 +6,16 @@
     <div style="font-size:3rem;margin-bottom:0.5rem;">🔒</div>
     <h1 style="margin:0 0 0.5rem;">403 — Access Restricted</h1>
     <p style="color:var(--muted);margin-bottom:1.5rem;">
-      This section requires <strong>Administrator</strong> privileges. You are currently signed in as a
-      <strong>{{ user.role }}</strong> (<code>{{ user.username }}</code>).
+      This page requires <strong>{{ required_role or 'Administrator' }}</strong> privileges.
+      You are currently signed in as <strong>{{ user.role | upper }}</strong> (<code>{{ user.email }}</code>).
     </p>
     <div class="inline-actions" style="justify-content:center;">
       <a href="/" class="btn btn-primary">Return to Storefront</a>
-      <a href="/my-orders" class="btn btn-secondary">View My Orders</a>
+      {% if user.role == 'manager' %}
+        <a href="/manager" class="btn btn-secondary">Go to Manager Portal</a>
+      {% elif user.role == 'customer' %}
+        <a href="/my-orders" class="btn btn-secondary">View My Orders</a>
+      {% endif %}
     </div>
   </div>
 </div>

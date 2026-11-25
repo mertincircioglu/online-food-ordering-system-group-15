@@ -5,68 +5,133 @@
   <div>
     <h1>My Orders</h1>
     <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
-      Track your order history. You can update delivery notes or cancel any order while its status is <strong>Pending</strong>.
+      Edit or cancel orders in <strong>Order Confirmation</strong> status, and rate &amp; review your <strong>Delivered</strong> orders.
     </p>
   </div>
   <a href="/" class="btn btn-primary">+ New Order</a>
 </div>
 
 {% if orders %}
-  <div style="display:flex;flex-direction:column;gap:1.1rem;">
+  <div style="display:flex;flex-direction:column;gap:1.15rem;">
     {% for o in orders %}
       <div class="card">
         <div class="card-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:0.85rem;">
             <div>
-              <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
                 <strong style="font-size:1.1rem;">Order #{{ o.order_id }} — {{ o.restaurant_name }}</strong>
-                <span class="badge badge-{{ o.status | replace(' ', '') }}">{{ o.status }}</span>
-                {% if o.payment_status %}
-                  <span class="badge badge-{{ o.payment_status }}">{{ o.payment_method }} · {{ o.payment_status }}</span>
-                {% endif %}
+                <span class="badge badge-{{ o.order_status | replace(' ', '') }}">{{ o.order_status }}</span>
+                <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ o.delivery_type | replace('_', ' ') }}</span>
+                <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ o.payment_method }}</span>
               </div>
               <div style="font-size:0.84rem;color:var(--muted);margin-top:0.25rem;">
-                Placed on {{ o.order_date.strftime('%Y-%m-%d %H:%M') }}
+                Placed on {{ o.order_date.strftime('%Y-%m-%d %H:%M') }} · Est. {{ o.estimated_delivery_time }} min
               </div>
             </div>
             <div style="font-size:1.25rem;font-weight:800;color:var(--brand);">
-              {{ "%.2f"|format(o.total_amount) }} TL
+              {{ "%.2f"|format(o.total_price) }} TL
             </div>
           </div>
 
           <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;margin-bottom:0.85rem;font-size:0.9rem;">
-            <div><strong>Items:</strong> {{ o.items_summary or '—' }}</div>
-            <div style="margin-top:0.3rem;"><strong>Delivery Address:</strong> {{ o.delivery_address }}</div>
-            {% if o.notes %}
-              <div style="margin-top:0.3rem;"><strong>Notes:</strong> {{ o.notes }}</div>
-            {% endif %}
+            <div><strong>Products:</strong> {{ o.items_summary or '—' }}</div>
+            <div style="margin-top:0.3rem;"><strong>Location:</strong> {{ o.delivery_location }}</div>
           </div>
 
-          {% if o.status == 'Pending' %}
+          {% if o.order_status == 'Order Confirmation' %}
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
               <details style="flex:1;min-width:260px;">
-                <summary>Edit Delivery Address / Notes</summary>
+                <summary>Edit Payment Method / Delivery Address</summary>
                 <form method="post" action="/my-orders/{{ o.order_id }}/update" style="margin-top:0.75rem;">
                   <div class="form-row">
                     <div class="form-group">
-                      <label>Delivery Address</label>
-                      <input type="text" name="delivery_address" class="form-control" value="{{ o.delivery_address }}" required />
+                      <label>Payment Method</label>
+                      <select name="payment_method" class="form-control">
+                        {% for pm in payment_methods %}
+                          <option value="{{ pm }}" {% if o.payment_method == pm %}selected{% endif %}>{{ pm }}</option>
+                        {% endfor %}
+                      </select>
                     </div>
-                    <div class="form-group">
-                      <label>Notes</label>
-                      <input type="text" name="notes" class="form-control" value="{{ o.notes or '' }}" />
-                    </div>
+                    {% if o.delivery_type != 'Pick_up' and saved_addresses %}
+                      <div class="form-group">
+                        <label>Delivery Address</label>
+                        <select name="delivery_address_id" class="form-control">
+                          {% for a in saved_addresses %}
+                            <option value="{{ a.address_id }}" {% if o.delivery_address_id == a.address_id %}selected{% endif %}>
+                              {{ a.address_title or 'Address' }} — {{ a.district }}, {{ a.street }}
+                            </option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    {% endif %}
                   </div>
                   <button type="submit" class="btn btn-dark btn-sm">Update Order</button>
                 </form>
               </details>
 
               <form method="post" action="/my-orders/{{ o.order_id }}/delete" style="margin:0;">
-                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Cancel and delete this pending order?')">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Cancel and delete Order #{{ o.order_id }}?')">
                   Cancel Order
                 </button>
               </form>
             </div>
+          {% elif o.order_status == 'Delivered' %}
+            {% if o.restaurant_review_id %}
+              <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:0.8rem 1rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                  <div>
+                    <strong>Your Review:</strong> <span class="badge" style="background:#fff;color:#ea580c;">★ {{ o.review_rating }} / 5</span>
+                    <span style="margin-left:0.5rem;font-size:0.9rem;">{{ o.review_comment or '' }}</span>
+                  </div>
+                  <form method="post" action="/reviews/{{ o.restaurant_review_id }}/delete" style="margin:0;">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete your review?')">Delete Review</button>
+                  </form>
+                </div>
+                <details style="margin-top:0.55rem;">
+                  <summary>Edit Review</summary>
+                  <form method="post" action="/reviews/{{ o.restaurant_review_id }}/update" style="margin-top:0.6rem;">
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label>Rating</label>
+                        <select name="rating" class="form-control">
+                          {% for s in [5, 4, 3, 2, 1] %}
+                            <option value="{{ s }}" {% if o.review_rating == s %}selected{% endif %}>{{ s }} Stars</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>Comment</label>
+                        <input name="comment" class="form-control" value="{{ o.review_comment or '' }}" />
+                      </div>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm">Save Review</button>
+                  </form>
+                </details>
+              </div>
+            {% else %}
+              <details>
+                <summary>★ Leave a Restaurant Review for this Order</summary>
+                <form method="post" action="/my-orders/{{ o.order_id }}/review" style="margin-top:0.75rem;">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Rating (1–5)</label>
+                      <select name="rating" class="form-control" required>
+                        <option value="5">★★★★★ (5 — Excellent)</option>
+                        <option value="4">★★★★☆ (4 — Very Good)</option>
+                        <option value="3">★★★☆☆ (3 — Good)</option>
+                        <option value="2">★★☆☆☆ (2 — Fair)</option>
+                        <option value="1">★☆☆☆☆ (1 — Poor)</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Comment (Optional)</label>
+                      <input name="comment" class="form-control" placeholder="How was the food and delivery?" />
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-sm">Submit Review</button>
+                </form>
+              </details>
+            {% endif %}
           {% endif %}
         </div>
       </div>

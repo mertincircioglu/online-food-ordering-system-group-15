@@ -1,88 +1,128 @@
-// Paste this file directly into https://dbdiagram.io/d to generate
-// clean ER and Logical Schema diagrams for Chapters 3 & 4.
+// CMPE341 - Group 15 - Chapter 4: Logical Data Model (15 Normalized Tables)
+// Paste into https://dbdiagram.io/d if you want an interactive SQL/diagram view.
 
 Project BiteFlow_Online_Food_Ordering_Group15 {
   database_type: 'PostgreSQL'
-  Note: 'CMPE341 Database Design & Management - Group 15 (8 Entities)'
+  Note: 'Mapped from 10-Entity EER Diagram -> 15 Normalized Relational Tables'
 }
 
-Table users {
-  user_id int [pk, increment]
-  username varchar(50) [not null, unique]
+Table member {
+  member_id int [pk, increment]
   email varchar(120) [not null, unique]
+  first_name varchar(60) [not null]
+  middle_name varchar(60)
+  last_name varchar(60) [not null]
   password_hash text [not null]
-  role varchar(20) [not null, default: 'customer', note: "CHECK (role IN ('admin', 'customer'))"]
-  full_name varchar(100) [not null]
-  phone varchar(25) [not null]
-  address text [not null]
-  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  phone_number varchar(25) [not null]
 }
 
-Table restaurants {
+Table admin {
+  admin_id int [pk, increment]
+  member_id int [not null, unique, ref: - member.member_id]
+}
+
+Table customer {
+  customer_id int [pk, increment]
+  member_id int [not null, unique, ref: - member.member_id]
+  gender varchar(25) [not null]
+}
+
+Table address {
+  address_id int [pk, increment]
+  address_title varchar(60)
+  province varchar(60) [not null]
+  district varchar(60) [not null]
+  subdistrict varchar(60) [not null]
+  neighborhood varchar(80) [not null]
+  street varchar(120) [not null]
+  floor varchar(20)
+  building_no varchar(20)
+  latitude numeric(9,6) [not null]
+  longitude numeric(9,6) [not null]
+  details text
+}
+
+Table customer_address {
+  customer_id int [pk, ref: > customer.customer_id]
+  address_id int [pk, ref: > address.address_id]
+}
+
+Table customer_payment_info {
+  payment_info_id int [pk, increment]
+  customer_id int [not null, ref: > customer.customer_id]
+  saved_payment_info varchar(120) [not null]
+}
+
+Table restaurant {
   restaurant_id int [pk, increment]
+  address_id int [not null, unique, ref: - address.address_id]
   name varchar(100) [not null]
-  cuisine_type varchar(50) [not null]
-  address text [not null]
-  phone varchar(25) [not null]
-  delivery_time_min int [not null, default: 30]
+  phone_number varchar(25) [not null]
+  email varchar(120) [not null]
   min_order_amount numeric(10,2) [not null, default: 0.00]
-  is_active boolean [not null, default: true]
-  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
 }
 
-Table categories {
-  category_id int [pk, increment]
-  name varchar(60) [not null, unique]
-  description varchar(255)
+Table restaurant_manager {
+  manager_id int [pk, increment]
+  member_id int [not null, unique, ref: - member.member_id]
+  restaurant_id int [not null, ref: > restaurant.restaurant_id]
 }
 
-Table menu_items {
-  item_id int [pk, increment]
-  restaurant_id int [not null, ref: > restaurants.restaurant_id]
-  category_id int [not null, ref: > categories.category_id]
-  name varchar(100) [not null]
+Table restaurant_working_hours {
+  restaurant_id int [pk, ref: > restaurant.restaurant_id]
+  day varchar(15) [pk]
+  opening_time time [not null]
+  closing_time time [not null]
+}
+
+Table restaurant_delivery_type {
+  restaurant_id int [pk, ref: > restaurant.restaurant_id]
+  delivery_type varchar(30) [pk]
+}
+
+Table restaurant_cuisine {
+  restaurant_id int [pk, ref: > restaurant.restaurant_id]
+  cuisine_type varchar(50) [pk]
+}
+
+Table product {
+  product_id int [pk, increment]
+  restaurant_id int [not null, ref: > restaurant.restaurant_id]
+  product_name varchar(100) [not null]
   description text
+  category varchar(30) [not null]
   price numeric(10,2) [not null]
   is_available boolean [not null, default: true]
+  discount_available boolean [not null, default: false]
+  discount_percentage numeric(5,2)
 }
 
 Table orders {
   order_id int [pk, increment]
-  user_id int [not null, ref: > users.user_id]
-  restaurant_id int [not null, ref: > restaurants.restaurant_id]
-  order_date timestamp [not null, default: `CURRENT_TIMESTAMP`]
-  status varchar(20) [not null, default: 'Pending']
-  total_amount numeric(10,2) [not null]
-  delivery_address text [not null]
-  notes varchar(255)
+  restaurant_id int [not null, ref: > restaurant.restaurant_id]
+  customer_id int [not null, ref: > customer.customer_id]
+  delivery_address_id int [ref: > address.address_id]
+  delivery_type varchar(30) [not null]
+  payment_method varchar(30) [not null]
+  order_date timestamp [not null]
+  order_status varchar(30) [not null]
+  estimated_delivery_time int [not null]
+  total_price numeric(10,2) [not null]
 }
 
 Table order_items {
-  order_item_id int [pk, increment]
-  order_id int [not null, ref: > orders.order_id]
-  item_id int [not null, ref: > menu_items.item_id]
-  quantity int [not null]
+  order_id int [pk, ref: > orders.order_id]
+  product_id int [pk, ref: > product.product_id]
   unit_price numeric(10,2) [not null]
-
-  indexes {
-    (order_id, item_id) [unique]
-  }
+  quantity int [not null]
 }
 
-Table payments {
-  payment_id int [pk, increment]
+Table restaurant_review {
+  restaurant_review_id int [pk, increment]
+  customer_id int [not null, ref: > customer.customer_id]
+  restaurant_id int [not null, ref: > restaurant.restaurant_id]
   order_id int [not null, unique, ref: - orders.order_id]
-  payment_method varchar(30) [not null]
-  payment_status varchar(20) [not null, default: 'Pending']
-  amount numeric(10,2) [not null]
-  paid_at timestamp
-}
-
-Table reviews {
-  review_id int [pk, increment]
-  user_id int [not null, ref: > users.user_id]
-  restaurant_id int [not null, ref: > restaurants.restaurant_id]
-  rating int [not null, note: 'CHECK (rating BETWEEN 1 AND 5)']
-  comment text [not null]
-  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  rating int [not null]
+  comment text
+  date timestamp [not null]
 }

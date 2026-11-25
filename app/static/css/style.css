@@ -437,9 +437,12 @@ a {
 }
 
 .badge-admin      { background: #ede9fe; color: #6d28d9; }
+.badge-manager    { background: #ffedd5; color: #c2410c; }
 .badge-customer   { background: #e0f2fe; color: #0369a1; }
+.badge-OrderConfirmation { background: #fef3c7; color: #b45309; }
 .badge-Pending    { background: #fef3c7; color: #b45309; }
 .badge-Preparing  { background: #dbeafe; color: #1d4ed8; }
+.badge-Ontheway   { background: #ede9fe; color: #6d28d9; }
 .badge-OnTheWay   { background: #ede9fe; color: #6d28d9; }
 .badge-Delivered  { background: #d1fae5; color: #047857; }
 .badge-Completed  { background: #d1fae5; color: #047857; }
@@ -447,6 +450,7 @@ a {
 .badge-Refunded   { background: #f1f5f9; color: #475569; }
 .badge-active     { background: #d1fae5; color: #047857; }
 .badge-inactive   { background: #fee2e2; color: #b91c1c; }
+.badge-discount   { background: #dcfce7; color: #15803d; }
 
 /* Restaurant Detail Layout */
 .restaurant-layout {

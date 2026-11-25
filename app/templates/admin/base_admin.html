@@ -2,13 +2,13 @@
 {% block body %}
 <div class="admin-shell">
   <aside class="admin-sidebar">
-    <div class="admin-sidebar-title">Management</div>
+    <div class="admin-sidebar-title">System Administration</div>
     <a href="/admin" class="admin-nav-link {% if active_nav == 'dashboard' %}active{% endif %}">📊 Dashboard &amp; SQL</a>
     <a href="/admin/restaurants" class="admin-nav-link {% if active_nav == 'restaurants' %}active{% endif %}">🏪 Restaurants</a>
-    <a href="/admin/categories" class="admin-nav-link {% if active_nav == 'categories' %}active{% endif %}">🏷 Categories</a>
-    <a href="/admin/menu-items" class="admin-nav-link {% if active_nav == 'menu_items' %}active{% endif %}">🍔 Menu Items</a>
-    <a href="/admin/orders" class="admin-nav-link {% if active_nav == 'orders' %}active{% endif %}">📦 Orders &amp; Payments</a>
-    <a href="/admin/users" class="admin-nav-link {% if active_nav == 'users' %}active{% endif %}">👥 Users &amp; Roles</a>
+    <a href="/admin/products" class="admin-nav-link {% if active_nav == 'products' %}active{% endif %}">🍔 Products</a>
+    <a href="/admin/orders" class="admin-nav-link {% if active_nav == 'orders' %}active{% endif %}">📦 Orders</a>
+    <a href="/admin/reviews" class="admin-nav-link {% if active_nav == 'reviews' %}active{% endif %}">⭐ Reviews</a>
+    <a href="/admin/members" class="admin-nav-link {% if active_nav == 'members' %}active{% endif %}">👥 Members &amp; Managers</a>
     <div class="admin-sidebar-title" style="margin-top:1rem;">Storefront</div>
     <a href="/" class="admin-nav-link">← View Public Site</a>
   </aside>

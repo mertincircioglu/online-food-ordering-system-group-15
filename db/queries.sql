@@ -1,89 +1,99 @@
 -- ============================================================================
 -- CMPE341 - Chapter 5: Complex SQL Queries (Group 15)
--- Online Food Ordering System (PostgreSQL)
+-- Online Food Ordering System (PostgreSQL 16 - 15 Normalized Tables)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
 -- QUERY 1: Multi-table JOIN
--- Displays detailed order summaries by joining orders, users, restaurants,
--- order_items, menu_items, and payments.
+-- Joins orders, customer, member, restaurant, address, order_items, and product
+-- to display a comprehensive order summary ledger with delivery location.
 -- ----------------------------------------------------------------------------
 SELECT
     o.order_id,
-    u.full_name          AS customer_name,
-    r.name               AS restaurant_name,
-    STRING_AGG(m.name || ' (x' || oi.quantity || ')', ', ' ORDER BY m.name) AS ordered_items,
-    o.status             AS order_status,
-    p.payment_method,
-    p.payment_status,
-    o.total_amount
+    m.first_name || ' ' || m.last_name AS customer_name,
+    r.name                              AS restaurant_name,
+    COALESCE(a.district || ', ' || a.neighborhood, 'Self Pick-up') AS delivery_location,
+    o.delivery_type,
+    o.payment_method,
+    o.order_status,
+    STRING_AGG(p.product_name || ' (x' || oi.quantity || ')', ', ' ORDER BY p.product_name) AS ordered_products,
+    o.total_price
 FROM orders o
-INNER JOIN users u        ON o.user_id       = u.user_id
-INNER JOIN restaurants r  ON o.restaurant_id = r.restaurant_id
-INNER JOIN order_items oi ON o.order_id      = oi.order_id
-INNER JOIN menu_items m   ON oi.item_id      = m.item_id
-LEFT  JOIN payments p     ON o.order_id      = p.order_id
-GROUP BY o.order_id, u.full_name, r.name, o.status, p.payment_method, p.payment_status, o.total_amount
+INNER JOIN customer c     ON o.customer_id         = c.customer_id
+INNER JOIN member m       ON c.member_id           = m.member_id
+INNER JOIN restaurant r   ON o.restaurant_id       = r.restaurant_id
+INNER JOIN order_items oi ON o.order_id            = oi.order_id
+INNER JOIN product p      ON oi.product_id         = p.product_id
+LEFT  JOIN address a      ON o.delivery_address_id = a.address_id
+GROUP BY o.order_id, m.first_name, m.last_name, r.name, a.district, a.neighborhood,
+         o.delivery_type, o.payment_method, o.order_status, o.total_price
 ORDER BY o.order_date DESC;
 
 
 -- ----------------------------------------------------------------------------
 -- QUERY 2: GROUP BY + ORDER BY
--- Aggregates total orders, total revenue, average order value, and average
--- customer rating per restaurant, sorted by total revenue descending.
+-- Aggregates total non-cancelled orders, revenue, average order value,
+-- cuisine list, and dynamically derived average rating per restaurant.
 -- ----------------------------------------------------------------------------
 SELECT
     r.restaurant_id,
-    r.name                                                      AS restaurant_name,
-    r.cuisine_type,
-    COUNT(o.order_id)                                           AS total_orders,
-    COALESCE(SUM(o.total_amount), 0.00)                         AS total_revenue,
-    COALESCE(ROUND(AVG(o.total_amount), 2), 0.00)               AS avg_order_value,
-    COALESCE(rev_stats.avg_rating, 0.00)                        AS avg_rating
-FROM restaurants r
+    r.name                                          AS restaurant_name,
+    COALESCE(cuisines.cuisine_list, 'General')      AS cuisines,
+    COUNT(o.order_id)                               AS total_orders,
+    COALESCE(SUM(o.total_price), 0.00)              AS total_revenue,
+    COALESCE(ROUND(AVG(o.total_price), 2), 0.00)    AS avg_order_value,
+    COALESCE(rev_stats.derived_rating, 0.00)        AS derived_rating
+FROM restaurant r
 LEFT JOIN orders o
-       ON r.restaurant_id = o.restaurant_id AND o.status <> 'Cancelled'
+       ON r.restaurant_id = o.restaurant_id AND o.order_status <> 'Cancelled'
 LEFT JOIN (
-    SELECT restaurant_id, ROUND(AVG(rating), 2) AS avg_rating
-    FROM reviews
+    SELECT restaurant_id, ROUND(AVG(rating), 2) AS derived_rating
+    FROM restaurant_review
     GROUP BY restaurant_id
 ) rev_stats
        ON r.restaurant_id = rev_stats.restaurant_id
-GROUP BY r.restaurant_id, r.name, r.cuisine_type, rev_stats.avg_rating
-ORDER BY total_revenue DESC, avg_rating DESC;
+LEFT JOIN (
+    SELECT restaurant_id, STRING_AGG(cuisine_type, ', ' ORDER BY cuisine_type) AS cuisine_list
+    FROM restaurant_cuisine
+    GROUP BY restaurant_id
+) cuisines
+       ON r.restaurant_id = cuisines.restaurant_id
+GROUP BY r.restaurant_id, r.name, cuisines.cuisine_list, rev_stats.derived_rating
+ORDER BY total_revenue DESC, derived_rating DESC;
 
 
 -- ----------------------------------------------------------------------------
 -- QUERY 3: Subquery
--- Finds customers whose total non-cancelled spending exceeds the overall
--- average customer spending across all customers who have placed orders.
+-- Finds customers whose total non-cancelled order spending exceeds the overall
+-- average spending across all customers who have placed orders.
 -- ----------------------------------------------------------------------------
 SELECT
-    u.user_id,
-    u.username,
-    u.full_name,
-    COUNT(o.order_id)             AS order_count,
-    SUM(o.total_amount)           AS total_spent,
+    c.customer_id,
+    m.email,
+    m.first_name || ' ' || m.last_name AS customer_name,
+    COUNT(o.order_id)                   AS order_count,
+    SUM(o.total_price)                  AS total_spent,
     ROUND((
         SELECT AVG(customer_total)
         FROM (
-            SELECT SUM(total_amount) AS customer_total
+            SELECT SUM(total_price) AS customer_total
             FROM orders
-            WHERE status <> 'Cancelled'
-            GROUP BY user_id
+            WHERE order_status <> 'Cancelled'
+            GROUP BY customer_id
         ) AS sub_avg
-    ), 2)                         AS avg_customer_spending
-FROM users u
-INNER JOIN orders o ON u.user_id = o.user_id
-WHERE o.status <> 'Cancelled'
-GROUP BY u.user_id, u.username, u.full_name
-HAVING SUM(o.total_amount) > (
+    ), 2)                               AS platform_avg_spending
+FROM customer c
+INNER JOIN member m ON c.member_id   = m.member_id
+INNER JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_status <> 'Cancelled'
+GROUP BY c.customer_id, m.email, m.first_name, m.last_name
+HAVING SUM(o.total_price) > (
     SELECT AVG(customer_total)
     FROM (
-        SELECT SUM(total_amount) AS customer_total
+        SELECT SUM(total_price) AS customer_total
         FROM orders
-        WHERE status <> 'Cancelled'
-        GROUP BY user_id
+        WHERE order_status <> 'Cancelled'
+        GROUP BY customer_id
     ) AS avg_calc
 )
 ORDER BY total_spent DESC;

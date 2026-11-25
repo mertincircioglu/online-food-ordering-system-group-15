@@ -5,7 +5,7 @@
   <div>
     <h1>Admin Dashboard &amp; SQL Insights</h1>
     <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
-      Live overview and execution of the 3 CMPE341 complex PostgreSQL queries.
+      Live KPIs and execution of the 3 CMPE341 complex PostgreSQL queries across all 15 normalized tables.
     </p>
   </div>
 </div>
@@ -20,12 +20,12 @@
     <div class="kpi-value">{{ kpis.total_orders }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Active Restaurants</div>
-    <div class="kpi-value">{{ kpis.active_restaurants }}</div>
+    <div class="kpi-label">Partner Restaurants</div>
+    <div class="kpi-value">{{ kpis.total_restaurants }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Registered Users</div>
-    <div class="kpi-value">{{ kpis.total_users }}</div>
+    <div class="kpi-label">Registered Members</div>
+    <div class="kpi-value">{{ kpis.total_members }}</div>
   </div>
 </div>
 
@@ -35,22 +35,27 @@
     <div class="section-header" style="margin-bottom:0.5rem;">
       <div>
         <h3 style="margin:0;">Query 1 — Multi-Table JOIN (Detailed Order Ledger)</h3>
-        <span style="font-size:0.84rem;color:var(--muted);">Joins <code>orders</code>, <code>users</code>, <code>restaurants</code>, <code>order_items</code>, <code>menu_items</code>, and <code>payments</code></span>
+        <span style="font-size:0.84rem;color:var(--muted);">Joins <code>orders</code>, <code>customer</code>, <code>member</code>, <code>restaurant</code>, <code>order_items</code>, <code>product</code>, and <code>address</code></span>
       </div>
-      <span class="badge badge-Preparing">JOIN</span>
+      <span class="badge badge-Preparing">7-TABLE JOIN</span>
     </div>
     <details>
       <summary>Show SQL Query</summary>
-      <pre class="sql-box">SELECT o.order_id, u.full_name AS customer_name, r.name AS restaurant_name,
-       STRING_AGG(m.name || ' (x' || oi.quantity || ')', ', ' ORDER BY m.name) AS ordered_items,
-       o.status AS order_status, p.payment_method, p.payment_status, o.total_amount
+      <pre class="sql-box">SELECT o.order_id, m.first_name || ' ' || m.last_name AS customer_name,
+       r.name AS restaurant_name,
+       COALESCE(a.district || ', ' || a.neighborhood, 'Self Pick-up') AS delivery_location,
+       o.delivery_type, o.payment_method, o.order_status,
+       STRING_AGG(p.product_name || ' (x' || oi.quantity || ')', ', ' ORDER BY p.product_name) AS ordered_products,
+       o.total_price
 FROM orders o
-INNER JOIN users u        ON o.user_id       = u.user_id
-INNER JOIN restaurants r  ON o.restaurant_id = r.restaurant_id
-INNER JOIN order_items oi ON o.order_id      = oi.order_id
-INNER JOIN menu_items m   ON oi.item_id      = m.item_id
-LEFT  JOIN payments p     ON o.order_id      = p.order_id
-GROUP BY o.order_id, u.full_name, r.name, o.status, p.payment_method, p.payment_status, o.total_amount
+INNER JOIN customer c     ON o.customer_id         = c.customer_id
+INNER JOIN member m       ON c.member_id           = m.member_id
+INNER JOIN restaurant r   ON o.restaurant_id       = r.restaurant_id
+INNER JOIN order_items oi ON o.order_id            = oi.order_id
+INNER JOIN product p      ON oi.product_id         = p.product_id
+LEFT  JOIN address a      ON o.delivery_address_id = a.address_id
+GROUP BY o.order_id, m.first_name, m.last_name, r.name, a.district, a.neighborhood,
+         o.delivery_type, o.payment_method, o.order_status, o.total_price
 ORDER BY o.order_date DESC;</pre>
     </details>
     <div class="table-wrap" style="margin-top:0.75rem;">
@@ -60,9 +65,9 @@ ORDER BY o.order_date DESC;</pre>
             <th>Order #</th>
             <th>Customer</th>
             <th>Restaurant</th>
-            <th>Items</th>
+            <th>Delivery Location</th>
+            <th>Products</th>
             <th>Status</th>
-            <th>Payment</th>
             <th>Total</th>
           </tr>
         </thead>
@@ -72,10 +77,10 @@ ORDER BY o.order_date DESC;</pre>
               <td><strong>#{{ row.order_id }}</strong></td>
               <td>{{ row.customer_name }}</td>
               <td>{{ row.restaurant_name }}</td>
-              <td style="font-size:0.85rem;">{{ row.ordered_items }}</td>
+              <td style="font-size:0.84rem;">{{ row.delivery_location }}<div style="color:var(--muted);">{{ row.delivery_type | replace('_', ' ') }} · {{ row.payment_method }}</div></td>
+              <td style="font-size:0.84rem;">{{ row.ordered_products }}</td>
               <td><span class="badge badge-{{ row.order_status | replace(' ', '') }}">{{ row.order_status }}</span></td>
-              <td style="font-size:0.84rem;">{{ row.payment_method }} · <span class="badge badge-{{ row.payment_status }}">{{ row.payment_status }}</span></td>
-              <td><strong>{{ "%.2f"|format(row.total_amount) }} TL</strong></td>
+              <td><strong>{{ "%.2f"|format(row.total_price) }} TL</strong></td>
             </tr>
           {% endfor %}
         </tbody>
@@ -89,46 +94,49 @@ ORDER BY o.order_date DESC;</pre>
   <div class="card-body">
     <div class="section-header" style="margin-bottom:0.5rem;">
       <div>
-        <h3 style="margin:0;">Query 2 — GROUP BY &amp; ORDER BY (Restaurant Revenue Ranking)</h3>
-        <span style="font-size:0.84rem;color:var(--muted);">Aggregates order count, total revenue, average order value, and average rating per restaurant</span>
+        <h3 style="margin:0;">Query 2 — GROUP BY &amp; ORDER BY (Restaurant Performance &amp; Derived Rating)</h3>
+        <span style="font-size:0.84rem;color:var(--muted);">Aggregates non-cancelled orders, revenue, average order value, cuisines, and dynamically derived ratings</span>
       </div>
       <span class="badge badge-Delivered">GROUP BY + ORDER BY</span>
     </div>
     <details>
       <summary>Show SQL Query</summary>
-      <pre class="sql-box">SELECT r.restaurant_id, r.name AS restaurant_name, r.cuisine_type,
+      <pre class="sql-box">SELECT r.restaurant_id, r.name AS restaurant_name,
+       COALESCE(cuisines.cuisine_list, 'General') AS cuisines,
        COUNT(o.order_id) AS total_orders,
-       COALESCE(SUM(o.total_amount), 0.00) AS total_revenue,
-       COALESCE(ROUND(AVG(o.total_amount), 2), 0.00) AS avg_order_value,
-       COALESCE(rev_stats.avg_rating, 0.00) AS avg_rating
-FROM restaurants r
-LEFT JOIN orders o ON r.restaurant_id = o.restaurant_id AND o.status &lt;&gt; 'Cancelled'
-LEFT JOIN (SELECT restaurant_id, ROUND(AVG(rating), 2) AS avg_rating FROM reviews GROUP BY restaurant_id) rev_stats
+       COALESCE(SUM(o.total_price), 0.00) AS total_revenue,
+       COALESCE(ROUND(AVG(o.total_price), 2), 0.00) AS avg_order_value,
+       COALESCE(rev_stats.derived_rating, 0.00) AS derived_rating
+FROM restaurant r
+LEFT JOIN orders o ON r.restaurant_id = o.restaurant_id AND o.order_status &lt;&gt; 'Cancelled'
+LEFT JOIN (SELECT restaurant_id, ROUND(AVG(rating), 2) AS derived_rating FROM restaurant_review GROUP BY restaurant_id) rev_stats
        ON r.restaurant_id = rev_stats.restaurant_id
-GROUP BY r.restaurant_id, r.name, r.cuisine_type, rev_stats.avg_rating
-ORDER BY total_revenue DESC, avg_rating DESC;</pre>
+LEFT JOIN (SELECT restaurant_id, STRING_AGG(cuisine_type, ', ' ORDER BY cuisine_type) AS cuisine_list FROM restaurant_cuisine GROUP BY restaurant_id) cuisines
+       ON r.restaurant_id = cuisines.restaurant_id
+GROUP BY r.restaurant_id, r.name, cuisines.cuisine_list, rev_stats.derived_rating
+ORDER BY total_revenue DESC, derived_rating DESC;</pre>
     </details>
     <div class="table-wrap" style="margin-top:0.75rem;">
       <table>
         <thead>
           <tr>
             <th>Restaurant</th>
-            <th>Cuisine</th>
+            <th>Cuisines</th>
             <th>Orders</th>
             <th>Total Revenue</th>
             <th>Avg. Order</th>
-            <th>Avg. Rating</th>
+            <th>Derived Rating</th>
           </tr>
         </thead>
         <tbody>
           {% for row in q2_groupby %}
             <tr>
               <td><strong>{{ row.restaurant_name }}</strong></td>
-              <td>{{ row.cuisine_type }}</td>
+              <td style="font-size:0.85rem;">{{ row.cuisines }}</td>
               <td>{{ row.total_orders }}</td>
               <td><strong style="color:var(--brand);">{{ "%.2f"|format(row.total_revenue) }} TL</strong></td>
               <td>{{ "%.2f"|format(row.avg_order_value) }} TL</td>
-              <td>★ {{ "%.2f"|format(row.avg_rating) }}</td>
+              <td>★ {{ "%.2f"|format(row.derived_rating) }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -142,22 +150,23 @@ ORDER BY total_revenue DESC, avg_rating DESC;</pre>
   <div class="card-body">
     <div class="section-header" style="margin-bottom:0.5rem;">
       <div>
-        <h3 style="margin:0;">Query 3 — Subquery (Top-Spending Customers Above Platform Average)</h3>
+        <h3 style="margin:0;">Query 3 — Subquery (High-Value Customers Above Platform Average)</h3>
         <span style="font-size:0.84rem;color:var(--muted);">Identifies customers whose total spending exceeds the average spending across all ordering customers</span>
       </div>
       <span class="badge badge-admin">SUBQUERY</span>
     </div>
     <details>
       <summary>Show SQL Query</summary>
-      <pre class="sql-box">SELECT u.user_id, u.username, u.full_name,
-       COUNT(o.order_id) AS order_count, SUM(o.total_amount) AS total_spent
-FROM users u
-INNER JOIN orders o ON u.user_id = o.user_id
-WHERE o.status &lt;&gt; 'Cancelled'
-GROUP BY u.user_id, u.username, u.full_name
-HAVING SUM(o.total_amount) &gt; (
+      <pre class="sql-box">SELECT c.customer_id, m.email, m.first_name || ' ' || m.last_name AS customer_name,
+       COUNT(o.order_id) AS order_count, SUM(o.total_price) AS total_spent
+FROM customer c
+INNER JOIN member m ON c.member_id   = m.member_id
+INNER JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_status &lt;&gt; 'Cancelled'
+GROUP BY c.customer_id, m.email, m.first_name, m.last_name
+HAVING SUM(o.total_price) &gt; (
     SELECT AVG(customer_total)
-    FROM (SELECT SUM(total_amount) AS customer_total FROM orders WHERE status &lt;&gt; 'Cancelled' GROUP BY user_id) AS avg_calc
+    FROM (SELECT SUM(total_price) AS customer_total FROM orders WHERE order_status &lt;&gt; 'Cancelled' GROUP BY customer_id) AS avg_calc
 )
 ORDER BY total_spent DESC;</pre>
     </details>
@@ -165,8 +174,8 @@ ORDER BY total_spent DESC;</pre>
       <table>
         <thead>
           <tr>
-            <th>User ID</th>
-            <th>Username</th>
+            <th>Customer ID</th>
+            <th>Email</th>
             <th>Full Name</th>
             <th>Orders</th>
             <th>Total Spent</th>
@@ -176,12 +185,12 @@ ORDER BY total_spent DESC;</pre>
         <tbody>
           {% for row in q3_subquery %}
             <tr>
-              <td>#{{ row.user_id }}</td>
-              <td><code>{{ row.username }}</code></td>
-              <td><strong>{{ row.full_name }}</strong></td>
+              <td>#{{ row.customer_id }}</td>
+              <td><code>{{ row.email }}</code></td>
+              <td><strong>{{ row.customer_name }}</strong></td>
               <td>{{ row.order_count }}</td>
               <td><strong style="color:var(--brand);">{{ "%.2f"|format(row.total_spent) }} TL</strong></td>
-              <td>{{ "%.2f"|format(row.avg_customer_spending) }} TL</td>
+              <td>{{ "%.2f"|format(row.platform_avg_spending) }} TL</td>
             </tr>
           {% endfor %}
         </tbody>

@@ -1,51 +1,85 @@
 {% extends "base.html" %}
 {% block title %}Create Account — BiteFlow{% endblock %}
 {% block content %}
-<div class="card" style="max-width:600px;margin:1.5rem auto;">
+<div class="card" style="max-width:680px;margin:1.5rem auto;">
   <div class="card-body" style="padding:2.2rem;">
     <h1 style="margin:0 0 0.35rem;font-size:1.6rem;">Create Customer Account</h1>
     <p style="margin:0 0 1.5rem;color:var(--muted);font-size:0.92rem;">
-      Your password is securely hashed with <strong>bcrypt</strong> before being stored in PostgreSQL.
+      Registers a new <code>Member</code> + <code>Customer</code> + default <code>Address</code> with <strong>bcrypt</strong> password hashing.
     </p>
 
     <form method="post" action="/register">
       <div class="form-row">
         <div class="form-group">
-          <label for="username">Username</label>
-          <input id="username" name="username" type="text" class="form-control" required />
+          <label>First Name</label>
+          <input name="first_name" type="text" class="form-control" required />
         </div>
         <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" class="form-control" required />
+          <label>Middle Name (Optional)</label>
+          <input name="middle_name" type="text" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input name="last_name" type="text" class="form-control" required />
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label for="full_name">Full Name</label>
-          <input id="full_name" name="full_name" type="text" class="form-control" required />
+          <label>Email</label>
+          <input name="email" type="email" class="form-control" required />
         </div>
         <div class="form-group">
-          <label for="phone">Phone Number</label>
-          <input id="phone" name="phone" type="text" class="form-control" placeholder="+90 5XX XXX XXXX" required />
+          <label>Phone Number</label>
+          <input name="phone_number" type="text" class="form-control" placeholder="+90 5XX XXX XXXX" required />
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <select name="gender" class="form-control" required>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+            <option value="Prefer not to say">Prefer not to say</option>
+          </select>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="address">Delivery Address</label>
-        <input id="address" name="address" type="text" class="form-control" placeholder="Street, District, City" required />
+        <label>Password (min 6 characters)</label>
+        <input name="password" type="password" class="form-control" minlength="6" required />
       </div>
 
-      <div class="form-group">
-        <label for="password">Password (min 6 characters)</label>
-        <input id="password" name="password" type="password" class="form-control" minlength="6" required />
+      <h4 style="margin:1.25rem 0 0.75rem;color:var(--ink-soft);">Primary Delivery Address</h4>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Province</label>
+          <input name="province" type="text" class="form-control" value="Ankara" required />
+        </div>
+        <div class="form-group">
+          <label>District</label>
+          <input name="district" type="text" class="form-control" placeholder="e.g. Golbasi" required />
+        </div>
+        <div class="form-group">
+          <label>Subdistrict</label>
+          <input name="subdistrict" type="text" class="form-control" placeholder="e.g. Incek" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Neighborhood</label>
+          <input name="neighborhood" type="text" class="form-control" placeholder="e.g. Kizilcasar" required />
+        </div>
+        <div class="form-group">
+          <label>Street</label>
+          <input name="street" type="text" class="form-control" placeholder="e.g. Incek Bulvari" required />
+        </div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:0.5rem;">Create Account</button>
     </form>
 
     <p style="margin-top:1.25rem;text-align:center;font-size:0.9rem;color:var(--muted);">
-      Already have an account? <a href="/login" style="color:var(--brand);font-weight:700;">Sign in</a>
+      Already registered? <a href="/login" style="color:var(--brand);font-weight:700;">Sign in</a>
     </p>
   </div>
 </div>

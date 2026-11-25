@@ -17,14 +17,17 @@
       <nav class="nav-links">
         <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Explore</a>
         {% if user %}
-          <a href="/my-orders" class="nav-link {% if request.url.path.startswith('/my-orders') %}active{% endif %}">My Orders</a>
-          <a href="/profile" class="nav-link {% if request.url.path.startswith('/profile') %}active{% endif %}">Profile</a>
-          {% if user.role == 'admin' %}
+          {% if user.role == 'customer' %}
+            <a href="/my-orders" class="nav-link {% if request.url.path.startswith('/my-orders') %}active{% endif %}">My Orders</a>
+          {% elif user.role == 'manager' %}
+            <a href="/manager" class="nav-link {% if request.url.path.startswith('/manager') %}active{% endif %}">Manager Portal</a>
+          {% elif user.role == 'admin' %}
             <a href="/admin" class="nav-link {% if request.url.path.startswith('/admin') %}active{% endif %}">Admin Panel</a>
           {% endif %}
+          <a href="/profile" class="nav-link {% if request.url.path.startswith('/profile') %}active{% endif %}">Profile</a>
           <div class="nav-user">
             <span class="badge badge-{{ user.role }}">{{ user.role | upper }}</span>
-            <span style="font-size:0.88rem;font-weight:600;">{{ user.username }}</span>
+            <span style="font-size:0.86rem;font-weight:600;">{{ user.first_name }}</span>
             <form method="post" action="/logout" style="margin:0;">
               <button type="submit" class="btn btn-secondary btn-sm">Sign Out</button>
             </form>
@@ -53,7 +56,7 @@
   {% endblock %}
 
   <footer class="footer">
-    <strong>BiteFlow</strong> — Online Food Ordering System · CMPE341 Database Design &amp; Management (Group 15) · Powered by PostgreSQL &amp; FastAPI
+    <strong>BiteFlow</strong> — Online Food Ordering System · CMPE341 Database Design &amp; Management (Group 15) · 15 Normalized PostgreSQL Tables
   </footer>
 </body>
 </html>

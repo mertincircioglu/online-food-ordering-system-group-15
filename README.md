@@ -4,7 +4,7 @@
 **Group:** Group 15  
 **Topic:** Online Food Ordering System  
 
-A fully Dockerized, role-based web application backed by **PostgreSQL 16** and **FastAPI** demonstrating normalized relational database design (8 entities), bcrypt password authentication, role-based access control (RBAC), full CRUD (`INSERT`, `UPDATE`, `DELETE`) operations, and complex SQL analytical queries.
+A fully Dockerized, 3-role web application backed by **PostgreSQL 16** and **FastAPI** implementing our **10-entity EER Diagram** mapped to **15 Normalized Relational Tables**, with bcrypt password authentication, strict role-based access control (RBAC), full CRUD (`INSERT`, `UPDATE`, `DELETE`) operations, coordinate-based delivery time estimation, and complex SQL analytical queries.
 
 ---
 
@@ -20,49 +20,58 @@ docker compose up --build
 
 Once the containers are running, open the application in your browser at:
 
-- **Web Application URL:** `http://localhost:8000`
-- **Admin Dashboard URL:** `http://localhost:8000/admin`
+- **Storefront URL:** `http://localhost:8000`
+- **Login URL:** `http://localhost:8000/login`
+- **Admin Panel URL:** `http://localhost:8000/admin`
+- **Restaurant Manager Portal URL:** `http://localhost:8000/manager`
 
-> PostgreSQL automatically executes [`db/init.sql`](db/init.sql) on first startup, creating all 8 tables with constraints and seeding realistic sample records (at least 5+ rows per table).
+> PostgreSQL automatically executes [`db/init.sql`](db/init.sql) on first startup, creating all **15 normalized tables** with constraints and seeding at least 3+ realistic records in every table.
 
 ---
 
 ## Test Accounts (Roles & Credentials)
 
-All passwords are stored securely using **bcrypt** (cost factor 12).
+All passwords are stored securely using **bcrypt** (cost factor 12). Sign in using the **Email** as username:
 
-| Role | Username | Password | Permissions |
+| Role | Email (Username) | Password | Permissions |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin` | `admin123` | Full Admin Panel access: Insert/Update/Delete restaurants, categories, menu items; update/delete orders & payment statuses; manage user roles; view live SQL analytics (`JOIN`, `GROUP BY + ORDER BY`, `Subquery`). |
-| **Customer** | `customer1` | `customer123` | Browse active restaurants & menus, place orders (transactional insert across `orders`, `order_items`, `payments`), update/cancel own `Pending` orders, insert/update/delete own reviews, update profile. Blocked (`403 Forbidden`) from `/admin/*`. |
+| **Admin** | `admin@biteflow.com` | `admin123` | System-wide CRUD on restaurants (address, cuisines, delivery types, working hours), products, orders, reviews moderation, members & restaurant managers, plus live SQL analytics (`7-table JOIN`, `GROUP BY + ORDER BY`, `Subquery`). |
+| **Restaurant Manager** | `manager1@biteflow.com` | `manager123` | Dedicated Manager Portal for **Anatolia Grill House**: update restaurant profile/cuisines/delivery types, Insert/Update/Delete own menu products & discounts, update incoming order statuses, view customer reviews. |
+| **Customer** | `customer1@atilim.edu.tr` | `customer123` | Search/filter restaurants by cuisine & delivery type, place orders (delivery or self pick-up), update/cancel own `Order Confirmation` orders, submit/edit/delete 1:1 reviews on `Delivered` orders, manage saved delivery addresses & payment methods. Blocked (`403 Forbidden`) from `/admin/*` and `/manager/*`. |
 
 Additional seeded accounts:
-- Admin: `manager` / `manager123`
-- Customers: `ayse`, `can`, `zeynep` (password: `customer123`)
+- Admins: `ops@biteflow.com`, `support@biteflow.com` (`admin123`)
+- Restaurant Managers: `manager2@biteflow.com` (Napoli), `manager3@biteflow.com` (Smash & Craft), `manager4@biteflow.com` (Sakura) (`manager123`)
+- Customers: `ayse@atilim.edu.tr`, `can@atilim.edu.tr`, `zeynep@atilim.edu.tr` (`customer123`)
 
 ---
 
-## Database Schema (8 Entities)
+## Database Schema (15 Normalized Tables from 10-Entity EER Model)
 
-1. **`users`** — Accounts, bcrypt password hashes, roles (`admin`, `customer`), contact & delivery address
-2. **`restaurants`** — Partner kitchens, cuisine type, delivery time, minimum order, active status
-3. **`categories`** — Menu categories (Main Courses, Pizzas, Burgers, Sushi & Rolls, Salads & Bowls, Beverages & Desserts)
-4. **`menu_items`** — Dishes linked to a restaurant and category with price and availability
-5. **`orders`** — Customer orders with lifecycle status (`Pending`, `Preparing`, `On The Way`, `Delivered`, `Cancelled`)
-6. **`order_items`** — Line items resolving the M:N relationship between `orders` and `menu_items`
-7. **`payments`** — 1:1 payment record per order (`Credit Card`, `Cash on Delivery`, `Online Wallet`)
-8. **`reviews`** — Customer ratings (1–5) and comments per restaurant
+1. **`member`** — Superclass holding email, name (`first_name`, `middle_name`, `last_name`), `password_hash`, `phone_number`
+2. **`admin`** — Disjoint subclass of `member`
+3. **`customer`** — Disjoint subclass of `member` (`gender`)
+4. **`restaurant_manager`** — Disjoint subclass of `member`, linked to `restaurant`
+5. **`address`** — Full structured address (`province`, `district`, `subdistrict`, `neighborhood`, `street`, `floor`, `building_no`, `latitude`, `longitude`, `details`)
+6. **`customer_address`** — M:N saved delivery addresses per customer
+7. **`customer_payment_info`** — Multi-valued saved payment methods per customer
+8. **`restaurant`** — Partner restaurants (1:1 `address_id`, `min_order_amount`; rating dynamically derived from `restaurant_review`)
+9. **`restaurant_working_hours`** — Weekly schedule (`day`, `opening_time`, `closing_time`)
+10. **`restaurant_delivery_type`** — Supported delivery options (`Platform_carrier`, `Restaurant_carrier`, `Pick_up`)
+11. **`restaurant_cuisine`** — Multi-valued cuisine tags per restaurant
+12. **`product`** — Menu items (`category`, `price`, `is_available`, `discount_available`, `discount_percentage`)
+13. **`orders`** — Customer orders (optional `delivery_address_id` for `Pick_up`, `delivery_type`, `payment_method`, `order_status`, `estimated_delivery_time`, `total_price`)
+14. **`order_items`** — Composite PK `(order_id, product_id)` with snapshot `unit_price` and `quantity`
+15. **`restaurant_review`** — 1:1 verified review per order (`order_id UNIQUE`, `rating` 1–5, optional `comment`)
 
-SQL files:
+SQL & Design files:
 - Schema & Seed Data: [`db/init.sql`](db/init.sql)
-- Required Complex SQL Queries: [`db/queries.sql`](db/queries.sql) (also viewable live in `/admin`)
-- ER / Logical Diagram Source (dbdiagram.io): [`docs/er-diagram.dbml`](docs/er-diagram.dbml)
+- Required Complex SQL Queries: [`db/queries.sql`](db/queries.sql) (also executed live in `/admin`)
+- Logical Schema DBML Source: [`docs/er-diagram.dbml`](docs/er-diagram.dbml)
 
 ---
 
 ## Cloud Deployment (Linux VM — Port 80)
-
-To expose the web application directly on HTTP port 80 on a Linux VM:
 
 ```bash
 git clone https://github.com/mertincircioglu/online-food-ordering-system-group-15.git
@@ -70,13 +79,11 @@ cd online-food-ordering-system-group-15
 APP_PORT=80 docker compose up -d --build
 ```
 
-Ensure inbound TCP port **80** is allowed in both your cloud firewall (NSG / Security Group) and the VM firewall (`sudo ufw allow 80/tcp`).
+Ensure inbound TCP port **80** is open in your cloud firewall (NSG / Security Group) and VM firewall (`sudo ufw allow 80/tcp`).
 
 ---
 
-## Resetting the Database
-
-To wipe the database volume and re-run `db/init.sql` cleanly from scratch:
+## Resetting the Database Volume
 
 ```bash
 docker compose down -v

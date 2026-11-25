@@ -1,0 +1,80 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Members & Managers — BiteFlow Admin{% endblock %}
+{% block admin_content %}
+<div class="section-header">
+  <h1>Members &amp; Restaurant Managers</h1>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">Create New Restaurant Manager (INSERT into Member + Restaurant_Manager)</h3>
+    <form method="post" action="/admin/members/create-manager">
+      <div class="form-row">
+        <div class="form-group"><label>First Name</label><input name="first_name" class="form-control" required /></div>
+        <div class="form-group"><label>Last Name</label><input name="last_name" class="form-control" required /></div>
+        <div class="form-group"><label>Email</label><input name="email" type="email" class="form-control" required /></div>
+        <div class="form-group"><label>Phone</label><input name="phone_number" class="form-control" placeholder="+90 5XX ..." required /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Password</label><input name="password" type="password" minlength="6" class="form-control" required /></div>
+        <div class="form-group">
+          <label>Assigned Restaurant</label>
+          <select name="restaurant_id" class="form-control" required>
+            {% for r in restaurants %}
+              <option value="{{ r.restaurant_id }}">{{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">+ Create Restaurant Manager</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">All Members ({{ members | length }})</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Member ID</th>
+            <th>Full Name</th>
+            <th>Email &amp; Phone</th>
+            <th>Subclass Role</th>
+            <th>Details</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in members %}
+            <tr>
+              <td>#{{ m.member_id }}</td>
+              <td><strong>{{ m.first_name }}{% if m.middle_name %} {{ m.middle_name }}{% endif %} {{ m.last_name }}</strong></td>
+              <td>
+                <code>{{ m.email }}</code>
+                <div style="font-size:0.8rem;color:var(--muted);">{{ m.phone_number }}</div>
+              </td>
+              <td><span class="badge badge-{{ m.role }}">{{ m.role | upper }}</span></td>
+              <td style="font-size:0.84rem;color:var(--muted);">
+                {% if m.managed_restaurant %}Manages: <strong>{{ m.managed_restaurant }}</strong>
+                {% elif m.gender %}Gender: {{ m.gender }}
+                {% else %}System Administrator{% endif %}
+              </td>
+              <td>
+                {% if m.member_id != user.member_id %}
+                  <form method="post" action="/admin/members/{{ m.member_id }}/delete" style="margin:0;">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete member {{ m.email }}?')">Delete</button>
+                  </form>
+                {% else %}
+                  <span style="font-size:0.8rem;color:var(--muted);">Current user</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

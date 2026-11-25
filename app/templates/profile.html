@@ -1,33 +1,122 @@
 {% extends "base.html" %}
 {% block title %}My Profile — BiteFlow{% endblock %}
 {% block content %}
-<div class="card" style="max-width:620px;margin:1rem auto;">
-  <div class="card-body" style="padding:2rem;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-      <div>
-        <h1 style="margin:0;font-size:1.5rem;">Account Profile</h1>
-        <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.88rem;">
-          Signed in as <strong>{{ user.username }}</strong> ({{ user.email }})
-        </p>
-      </div>
-      <span class="badge badge-{{ user.role }}">{{ user.role | upper }}</span>
-    </div>
+<div class="section-header">
+  <div>
+    <h1>Account Profile</h1>
+    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.9rem;">
+      Signed in as <strong>{{ user.email }}</strong> · <span class="badge badge-{{ user.role }}">{{ user.role | upper }}</span>
+    </p>
+  </div>
+</div>
 
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">Member Details (UPDATE)</h3>
     <form method="post" action="/profile">
-      <div class="form-group">
-        <label for="full_name">Full Name</label>
-        <input id="full_name" name="full_name" type="text" class="form-control" value="{{ user.full_name }}" required />
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input name="first_name" class="form-control" value="{{ user.first_name }}" required />
+        </div>
+        <div class="form-group">
+          <label>Middle Name (Optional)</label>
+          <input name="middle_name" class="form-control" value="{{ user.middle_name or '' }}" />
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input name="last_name" class="form-control" value="{{ user.last_name }}" required />
+        </div>
       </div>
-      <div class="form-group">
-        <label for="phone">Phone</label>
-        <input id="phone" name="phone" type="text" class="form-control" value="{{ user.phone }}" required />
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input name="phone_number" class="form-control" value="{{ user.phone_number }}" required />
+        </div>
+        {% if user.customer_id %}
+          <div class="form-group">
+            <label>Gender</label>
+            <select name="gender" class="form-control">
+              {% for g in ['Male', 'Female', 'Other', 'Prefer not to say'] %}
+                <option value="{{ g }}" {% if user.gender == g %}selected{% endif %}>{{ g }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endif %}
       </div>
-      <div class="form-group">
-        <label for="address">Default Delivery Address</label>
-        <textarea id="address" name="address" rows="2" class="form-control" required>{{ user.address }}</textarea>
-      </div>
-      <button type="submit" class="btn btn-primary">Save Profile</button>
+      <button type="submit" class="btn btn-primary">Save Account Info</button>
     </form>
   </div>
 </div>
+
+{% if user.customer_id %}
+<div class="grid-2" style="align-items:start;">
+  <!-- Saved Addresses CRUD -->
+  <div class="card">
+    <div class="card-body">
+      <h3 style="margin:0 0 1rem;">Saved Delivery Addresses ({{ saved_addresses | length }})</h3>
+      {% for a in saved_addresses %}
+        <div style="border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;gap:0.75rem;align-items:center;">
+          <div style="font-size:0.88rem;">
+            <strong>{{ a.address_title or 'Saved Address' }}</strong>
+            <div style="color:var(--muted);">{{ a.street }} No:{{ a.building_no or '-' }}, {{ a.neighborhood }}, {{ a.subdistrict }}, {{ a.district }}/{{ a.province }}</div>
+            {% if a.details %}<div style="font-size:0.8rem;color:var(--muted);">{{ a.details }}</div>{% endif %}
+          </div>
+          <form method="post" action="/profile/addresses/{{ a.address_id }}/delete" style="margin:0;">
+            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+          </form>
+        </div>
+      {% else %}
+        <p style="color:var(--muted);font-size:0.9rem;">No saved addresses yet.</p>
+      {% endfor %}
+
+      <details style="margin-top:0.85rem;">
+        <summary>+ Add New Delivery Address</summary>
+        <form method="post" action="/profile/addresses/create" style="margin-top:0.75rem;">
+          <div class="form-row">
+            <div class="form-group"><label>Title (Optional)</label><input name="address_title" class="form-control" placeholder="e.g. Dorm / Office" /></div>
+            <div class="form-group"><label>Province</label><input name="province" class="form-control" value="Ankara" required /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>District</label><input name="district" class="form-control" required /></div>
+            <div class="form-group"><label>Subdistrict</label><input name="subdistrict" class="form-control" required /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Neighborhood</label><input name="neighborhood" class="form-control" required /></div>
+            <div class="form-group"><label>Street</label><input name="street" class="form-control" required /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Building No</label><input name="building_no" class="form-control" /></div>
+            <div class="form-group"><label>Floor</label><input name="floor" class="form-control" /></div>
+          </div>
+          <div class="form-group"><label>Details (Optional)</label><input name="details" class="form-control" placeholder="Intercom / delivery notes" /></div>
+          <button type="submit" class="btn btn-dark btn-sm">Save Address</button>
+        </form>
+      </details>
+    </div>
+  </div>
+
+  <!-- Saved Payment Info CRUD -->
+  <div class="card">
+    <div class="card-body">
+      <h3 style="margin:0 0 1rem;">Saved Payment Methods ({{ saved_payments | length }})</h3>
+      {% for pay in saved_payments %}
+        <div style="border:1px solid var(--border);border-radius:10px;padding:0.75rem 1rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.9rem;font-weight:600;">💳 {{ pay.saved_payment_info }}</span>
+          <form method="post" action="/profile/payments/{{ pay.payment_info_id }}/delete" style="margin:0;">
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </div>
+      {% else %}
+        <p style="color:var(--muted);font-size:0.9rem;">No saved payment methods yet.</p>
+      {% endfor %}
+
+      <form method="post" action="/profile/payments/create" style="margin-top:1rem;display:flex;gap:0.5rem;">
+        <input name="saved_payment_info" class="form-control" placeholder="e.g. Mastercard ending in 1234" required />
+        <button type="submit" class="btn btn-dark btn-sm">Add</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

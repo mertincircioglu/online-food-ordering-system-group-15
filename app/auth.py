@@ -19,17 +19,44 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 
 
 def get_current_user(request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
+    member_id = request.session.get("member_id")
+    if not member_id:
         return None
-    return fetch_one(
+    row = fetch_one(
         """
-        SELECT user_id, username, email, role, full_name, phone, address, created_at
-        FROM users
-        WHERE user_id = %s
+        SELECT
+            m.member_id,
+            m.email,
+            m.first_name,
+            m.middle_name,
+            m.last_name,
+            m.phone_number,
+            a.admin_id,
+            rm.manager_id,
+            rm.restaurant_id AS managed_restaurant_id,
+            r.name           AS managed_restaurant_name,
+            c.customer_id,
+            c.gender,
+            CASE
+                WHEN a.admin_id IS NOT NULL THEN 'admin'
+                WHEN rm.manager_id IS NOT NULL THEN 'manager'
+                WHEN c.customer_id IS NOT NULL THEN 'customer'
+                ELSE 'member'
+            END AS role
+        FROM member m
+        LEFT JOIN admin a               ON m.member_id = a.member_id
+        LEFT JOIN restaurant_manager rm ON m.member_id = rm.member_id
+        LEFT JOIN restaurant r          ON rm.restaurant_id = r.restaurant_id
+        LEFT JOIN customer c            ON m.member_id = c.member_id
+        WHERE m.member_id = %s
         """,
-        (user_id,),
+        (member_id,),
     )
+    if not row:
+        return None
+    parts = [row["first_name"], row["middle_name"], row["last_name"]]
+    row["full_name"] = " ".join(p for p in parts if p)
+    return row
 
 
 def flash(request: Request, message: str, category: str = "success"):

@@ -3,26 +3,25 @@
 {% block content %}
 <section class="hero">
   <div class="hero-content">
-    <span class="hero-pill">⚡ Fast Delivery Across Ankara · Group 15</span>
+    <span class="hero-pill">⚡ Fast Delivery &amp; Self Pick-up · Group 15</span>
     <h1>Delicious food, ordered in seconds.</h1>
-    <p>Discover curated local restaurants, build your custom order, track live kitchen status, and share verified reviews.</p>
+    <p>Filter restaurants by cuisine, location, and delivery option. Enjoy live menu discounts, coordinate-based delivery estimates, and verified order reviews.</p>
 
     <form method="get" action="/" class="search-bar">
-      {% if selected_cuisine %}
-        <input type="hidden" name="cuisine" value="{{ selected_cuisine }}" />
-      {% endif %}
-      <input type="text" name="q" value="{{ search_query }}" placeholder="Search restaurants or cuisines (e.g. Pizza, Kebab, Sushi)..." />
+      {% if selected_cuisine %}<input type="hidden" name="cuisine" value="{{ selected_cuisine }}" />{% endif %}
+      {% if selected_delivery_type %}<input type="hidden" name="delivery_type" value="{{ selected_delivery_type }}" />{% endif %}
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search restaurant, cuisine, or district (e.g. Cankaya, Pizza, Sushi)..." />
       <button type="submit" class="btn btn-primary">Search</button>
     </form>
 
     <div class="hero-stats">
       <div class="hero-stat">
         <strong>{{ stats.restaurant_count }}</strong>
-        <span>Active Restaurants</span>
+        <span>Partner Kitchens</span>
       </div>
       <div class="hero-stat">
-        <strong>{{ stats.dish_count }}</strong>
-        <span>Fresh Dishes</span>
+        <strong>{{ stats.product_count }}</strong>
+        <span>Available Dishes</span>
       </div>
       <div class="hero-stat">
         <strong>{{ stats.order_count }}</strong>
@@ -34,17 +33,27 @@
 
 <div class="section-header">
   <h2>Featured Kitchens</h2>
-  {% if search_query or selected_cuisine %}
+  {% if search_query or selected_cuisine or selected_delivery_type %}
     <a href="/" class="btn btn-secondary btn-sm">Clear Filters</a>
   {% endif %}
 </div>
 
-<div class="chip-row">
-  <a href="/" class="chip {% if not selected_cuisine %}active{% endif %}">All Cuisines</a>
+<div class="chip-row" style="margin-bottom:0.8rem;">
+  <a href="/{% if selected_delivery_type %}?delivery_type={{ selected_delivery_type }}{% endif %}" class="chip {% if not selected_cuisine %}active{% endif %}">All Cuisines</a>
   {% for c in cuisines %}
-    <a href="/?cuisine={{ c | urlencode }}{% if search_query %}&q={{ search_query | urlencode }}{% endif %}"
+    <a href="/?cuisine={{ c | urlencode }}{% if selected_delivery_type %}&delivery_type={{ selected_delivery_type }}{% endif %}{% if search_query %}&q={{ search_query | urlencode }}{% endif %}"
        class="chip {% if selected_cuisine == c %}active{% endif %}">
       {{ c }}
+    </a>
+  {% endfor %}
+</div>
+
+<div class="chip-row">
+  <a href="/{% if selected_cuisine %}?cuisine={{ selected_cuisine | urlencode }}{% endif %}" class="chip {% if not selected_delivery_type %}active{% endif %}">All Delivery Types</a>
+  {% for dt in delivery_types %}
+    <a href="/?delivery_type={{ dt }}{% if selected_cuisine %}&cuisine={{ selected_cuisine | urlencode }}{% endif %}{% if search_query %}&q={{ search_query | urlencode }}{% endif %}"
+       class="chip {% if selected_delivery_type == dt %}active{% endif %}">
+      {{ dt | replace('_', ' ') }}
     </a>
   {% endfor %}
 </div>
@@ -55,20 +64,20 @@
       <article class="card restaurant-card">
         <div class="restaurant-banner banner-{{ loop.index0 % 5 }}">
           <div class="banner-top">
-            <span class="cuisine-tag">{{ r.cuisine_type }}</span>
+            <span class="cuisine-tag">{{ r.cuisine_list or 'General' }}</span>
             <span class="rating-pill">★ {{ "%.1f"|format(r.avg_rating) }} <span style="color:var(--muted);font-weight:500;">({{ r.review_count }})</span></span>
           </div>
-          <div style="font-size:0.84rem;opacity:0.92;font-weight:600;">
-            ⏱ {{ r.delivery_time_min }} min · Min. {{ "%.0f"|format(r.min_order_amount) }} TL
+          <div style="font-size:0.82rem;opacity:0.93;font-weight:600;">
+            Min. {{ "%.0f"|format(r.min_order_amount) }} TL · {{ r.delivery_list | replace('_', ' ') }}
           </div>
         </div>
         <div class="card-body" style="display:flex;flex-direction:column;flex:1;justify-content:space-between;">
           <div>
             <h3>{{ r.name }}</h3>
-            <div style="font-size:0.86rem;color:var(--muted);">{{ r.address }}</div>
+            <div style="font-size:0.86rem;color:var(--muted);">📍 {{ r.neighborhood }}, {{ r.district }}, {{ r.province }}</div>
             <div class="meta-row">
-              <span>📋 {{ r.item_count }} menu items</span>
-              <span>📞 {{ r.phone }}</span>
+              <span>📋 {{ r.product_count }} products</span>
+              <span>📞 {{ r.phone_number }}</span>
             </div>
           </div>
           <a href="/restaurants/{{ r.restaurant_id }}" class="btn btn-dark btn-block">View Menu &amp; Order →</a>
@@ -79,8 +88,8 @@
 {% else %}
   <div class="card">
     <div class="card-body" style="text-align:center;padding:3rem;">
-      <h3 style="margin-top:0;">No restaurants matched your search</h3>
-      <p style="color:var(--muted);">Try clearing your search or selecting another cuisine category.</p>
+      <h3 style="margin-top:0;">No restaurants matched your filters</h3>
+      <p style="color:var(--muted);">Try clearing filters or searching another district or cuisine.</p>
       <a href="/" class="btn btn-primary">Show All Restaurants</a>
     </div>
   </div>

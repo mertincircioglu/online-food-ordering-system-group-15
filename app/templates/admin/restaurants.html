@@ -7,34 +7,32 @@
 
 <div class="card" style="margin-bottom:1.5rem;">
   <div class="card-body">
-    <h3 style="margin:0 0 1rem;">Add New Restaurant (INSERT)</h3>
+    <h3 style="margin:0 0 1rem;">Add New Restaurant (INSERT across Address, Restaurant, Cuisines, Delivery Types &amp; Working Hours)</h3>
     <form method="post" action="/admin/restaurants/create">
       <div class="form-row">
-        <div class="form-group">
-          <label>Restaurant Name</label>
-          <input name="name" class="form-control" placeholder="e.g. Bosphorus Seafood" required />
-        </div>
-        <div class="form-group">
-          <label>Cuisine Type</label>
-          <input name="cuisine_type" class="form-control" placeholder="e.g. Mediterranean" required />
-        </div>
-        <div class="form-group">
-          <label>Phone</label>
-          <input name="phone" class="form-control" placeholder="+90 312 ..." required />
-        </div>
+        <div class="form-group"><label>Restaurant Name</label><input name="name" class="form-control" placeholder="e.g. Bosphorus Seafood" required /></div>
+        <div class="form-group"><label>Phone Number</label><input name="phone_number" class="form-control" placeholder="+90 312 ..." required /></div>
+        <div class="form-group"><label>Email</label><input name="email" type="email" class="form-control" placeholder="info@restaurant.com" required /></div>
+        <div class="form-group"><label>Min. Order (TL)</label><input name="min_order_amount" type="number" step="0.01" min="0" value="150.00" class="form-control" required /></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label>Province</label><input name="province" class="form-control" value="Ankara" required /></div>
+        <div class="form-group"><label>District</label><input name="district" class="form-control" placeholder="Cankaya" required /></div>
+        <div class="form-group"><label>Subdistrict</label><input name="subdistrict" class="form-control" placeholder="Yildiz" required /></div>
+        <div class="form-group"><label>Neighborhood</label><input name="neighborhood" class="form-control" placeholder="Hilal" required /></div>
+        <div class="form-group"><label>Street</label><input name="street" class="form-control" placeholder="Main St No:10" required /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Cuisines (comma-separated)</label><input name="cuisines" class="form-control" placeholder="Mediterranean, Seafood" required /></div>
         <div class="form-group">
-          <label>Address</label>
-          <input name="address" class="form-control" placeholder="Full street address" required />
-        </div>
-        <div class="form-group">
-          <label>Delivery Time (min)</label>
-          <input name="delivery_time_min" type="number" min="5" value="30" class="form-control" required />
-        </div>
-        <div class="form-group">
-          <label>Min. Order (TL)</label>
-          <input name="min_order_amount" type="number" step="0.01" min="0" value="150.00" class="form-control" required />
+          <label>Delivery Types</label>
+          <div style="display:flex;gap:1rem;padding-top:0.45rem;flex-wrap:wrap;">
+            {% for dt in delivery_types %}
+              <label style="display:inline-flex;align-items:center;gap:0.35rem;font-weight:500;">
+                <input type="checkbox" name="delivery_types" value="{{ dt }}" {% if dt != 'Pick_up' %}checked{% endif %} /> {{ dt | replace('_', ' ') }}
+              </label>
+            {% endfor %}
+          </div>
         </div>
       </div>
       <button type="submit" class="btn btn-primary">+ Add Restaurant</button>
@@ -50,10 +48,9 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Restaurant</th>
-            <th>Cuisine</th>
-            <th>Delivery / Min.</th>
-            <th>Status</th>
+            <th>Restaurant &amp; Location</th>
+            <th>Cuisines &amp; Delivery</th>
+            <th>Min. Order / Rating</th>
             <th>Actions (UPDATE / DELETE)</th>
           </tr>
         </thead>
@@ -63,57 +60,28 @@
               <td>#{{ r.restaurant_id }}</td>
               <td>
                 <strong>{{ r.name }}</strong>
-                <div style="font-size:0.8rem;color:var(--muted);">{{ r.address }} · {{ r.phone }}</div>
+                <div style="font-size:0.8rem;color:var(--muted);">{{ r.street }}, {{ r.neighborhood }}, {{ r.district }}/{{ r.province }}</div>
+                <div style="font-size:0.78rem;color:var(--muted);">{{ r.phone_number }} · {{ r.email }}</div>
               </td>
-              <td>{{ r.cuisine_type }}</td>
-              <td>{{ r.delivery_time_min }} min / {{ "%.2f"|format(r.min_order_amount) }} TL</td>
-              <td>
-                {% if r.is_active %}
-                  <span class="badge badge-active">Active</span>
-                {% else %}
-                  <span class="badge badge-inactive">Inactive</span>
-                {% endif %}
+              <td style="font-size:0.84rem;">
+                <div><strong>{{ r.cuisine_list }}</strong></div>
+                <div style="color:var(--muted);">{{ r.delivery_list | replace('_', ' ') }}</div>
               </td>
               <td>
-                <div class="inline-actions">
-                  <form method="post" action="/admin/restaurants/{{ r.restaurant_id }}/delete" style="margin:0;">
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete restaurant {{ r.name }} and all its menu items?')">Delete</button>
-                  </form>
-                </div>
-                <details style="margin-top:0.5rem;">
+                <strong>{{ "%.2f"|format(r.min_order_amount) }} TL</strong>
+                <div style="font-size:0.82rem;color:#ea580c;font-weight:700;">★ {{ "%.1f"|format(r.derived_rating) }}</div>
+              </td>
+              <td>
+                <form method="post" action="/admin/restaurants/{{ r.restaurant_id }}/delete" style="margin:0 0 0.45rem;">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete restaurant {{ r.name }}?')">Delete</button>
+                </form>
+                <details>
                   <summary>Edit</summary>
-                  <form method="post" action="/admin/restaurants/{{ r.restaurant_id }}/update" style="margin-top:0.6rem;min-width:260px;">
-                    <div class="form-group">
-                      <label>Name</label>
-                      <input name="name" value="{{ r.name }}" class="form-control" required />
-                    </div>
-                    <div class="form-group">
-                      <label>Cuisine</label>
-                      <input name="cuisine_type" value="{{ r.cuisine_type }}" class="form-control" required />
-                    </div>
-                    <div class="form-group">
-                      <label>Address</label>
-                      <input name="address" value="{{ r.address }}" class="form-control" required />
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>Phone</label>
-                        <input name="phone" value="{{ r.phone }}" class="form-control" required />
-                      </div>
-                      <div class="form-group">
-                        <label>Min (min)</label>
-                        <input name="delivery_time_min" type="number" min="5" value="{{ r.delivery_time_min }}" class="form-control" required />
-                      </div>
-                      <div class="form-group">
-                        <label>Min Order</label>
-                        <input name="min_order_amount" type="number" step="0.01" min="0" value="{{ r.min_order_amount }}" class="form-control" required />
-                      </div>
-                    </div>
-                    <div class="form-group">
-                      <label style="display:flex;align-items:center;gap:0.45rem;">
-                        <input type="checkbox" name="is_active" value="1" {% if r.is_active %}checked{% endif %} /> Active on Storefront
-                      </label>
-                    </div>
+                  <form method="post" action="/admin/restaurants/{{ r.restaurant_id }}/update" style="margin-top:0.6rem;min-width:240px;">
+                    <div class="form-group"><label>Name</label><input name="name" value="{{ r.name }}" class="form-control" required /></div>
+                    <div class="form-group"><label>Phone</label><input name="phone_number" value="{{ r.phone_number }}" class="form-control" required /></div>
+                    <div class="form-group"><label>Email</label><input name="email" type="email" value="{{ r.email }}" class="form-control" required /></div>
+                    <div class="form-group"><label>Min Order</label><input name="min_order_amount" type="number" step="0.01" value="{{ r.min_order_amount }}" class="form-control" required /></div>
                     <button type="submit" class="btn btn-dark btn-sm">Save Update</button>
                   </form>
                 </details>

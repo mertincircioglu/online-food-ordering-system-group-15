@@ -1,57 +1,33 @@
-# CMPE341 Report Technical Reference (Group 15)
+# CMPE341 Report Technical Reference (Group 15 — Updated 15-Table Model)
 
-Use this reference while writing your Word report manually in English.
-
----
-
-## Chapter 3: ER/EER Model Summary (8 Entities)
-
-**Entities (strictly within the 5–10 limit):**
-1. **USERS** — Stores registered customers and system administrators (`user_id`, `username`, `email`, `password_hash`, `role`, `full_name`, `phone`, `address`, `created_at`).
-2. **RESTAURANTS** — Stores partner restaurants (`restaurant_id`, `name`, `cuisine_type`, `address`, `phone`, `delivery_time_min`, `min_order_amount`, `is_active`, `created_at`).
-3. **CATEGORIES** — Groups dishes into menu categories (`category_id`, `name`, `description`).
-4. **MENU_ITEMS** — Individual dishes offered by a restaurant (`item_id`, `restaurant_id`, `category_id`, `name`, `description`, `price`, `is_available`).
-5. **ORDERS** — Customer food orders (`order_id`, `user_id`, `restaurant_id`, `order_date`, `status`, `total_amount`, `delivery_address`, `notes`).
-6. **ORDER_ITEMS** — Associative entity resolving the M:N relationship between `ORDERS` and `MENU_ITEMS` (`order_item_id`, `order_id`, `item_id`, `quantity`, `unit_price`).
-7. **PAYMENTS** — Payment record linked 1:1 to each order (`payment_id`, `order_id`, `payment_method`, `payment_status`, `amount`, `paid_at`).
-8. **REVIEWS** — Customer ratings and textual reviews for restaurants (`review_id`, `user_id`, `restaurant_id`, `rating`, `comment`, `created_at`).
-
-**Key Relationships & Cardinalities:**
-- `USERS` (1) — (0..N) `ORDERS` (*places*)
-- `RESTAURANTS` (1) — (0..N) `ORDERS` (*receives*)
-- `RESTAURANTS` (1) — (0..N) `MENU_ITEMS` (*offers*)
-- `CATEGORIES` (1) — (0..N) `MENU_ITEMS` (*classifies*)
-- `ORDERS` (1) — (1..N) `ORDER_ITEMS` — (N..1) `MENU_ITEMS` (*contains*)
-- `ORDERS` (1) — (1) `PAYMENTS` (*paid via*)
-- `USERS` (1) — (0..N) `REVIEWS` (*writes*)
-- `RESTAURANTS` (1) — (0..N) `REVIEWS` (*receives*)
-
-> Tip: Paste [`docs/er-diagram.dbml`](er-diagram.dbml) into [dbdiagram.io](https://dbdiagram.io/d) to export a high-resolution diagram for your report.
+All PostgreSQL tables, queries, and web app features are synchronized 1-to-1 with your Chapter 3 EER Diagram (10 entities) and Chapter 4 Logical Data Model (15 normalized tables).
 
 ---
 
-## Chapter 4: Logical Design (Relational Schema Mapping)
+## Relational Schema Mapping (15 Normalized Tables)
 
-Primary keys are **bolded**; foreign keys are marked with `(FK)`.
+1. **member**(**member_id**, email [UNIQUE], first_name, middle_name, last_name, password_hash, phone_number)
+2. **admin**(**admin_id**, member_id [UNIQUE, FK → member.member_id])
+3. **customer**(**customer_id**, member_id [UNIQUE, FK → member.member_id], gender)
+4. **restaurant_manager**(**manager_id**, member_id [UNIQUE, FK → member.member_id], restaurant_id [FK → restaurant.restaurant_id])
+5. **address**(**address_id**, address_title, province, district, subdistrict, neighborhood, street, floor, building_no, latitude, longitude, details)
+6. **customer_address**(**customer_id** [FK → customer.customer_id], **address_id** [FK → address.address_id])
+7. **customer_payment_info**(**payment_info_id**, customer_id [FK → customer.customer_id], saved_payment_info)
+8. **restaurant**(**restaurant_id**, address_id [UNIQUE, FK → address.address_id], name, phone_number, email, min_order_amount)
+9. **restaurant_working_hours**(**restaurant_id** [FK → restaurant.restaurant_id], **day**, opening_time, closing_time)
+10. **restaurant_delivery_type**(**restaurant_id** [FK → restaurant.restaurant_id], **delivery_type**)
+11. **restaurant_cuisine**(**restaurant_id** [FK → restaurant.restaurant_id], **cuisine_type**)
+12. **product**(**product_id**, restaurant_id [FK → restaurant.restaurant_id], product_name, description, category, price, is_available, discount_available, discount_percentage)
+13. **orders**(**order_id**, restaurant_id [FK → restaurant.restaurant_id], customer_id [FK → customer.customer_id], delivery_address_id [FK → address.address_id, NULL for Pick_up], delivery_type, payment_method, order_date, order_status, estimated_delivery_time, total_price)
+14. **order_items**(**order_id** [FK → orders.order_id], **product_id** [FK → product.product_id], unit_price, quantity)
+15. **restaurant_review**(**restaurant_review_id**, customer_id [FK → customer.customer_id], restaurant_id [FK → restaurant.restaurant_id], order_id [UNIQUE, FK → orders.order_id], rating, comment, date)
 
-- **users**(**user_id**, username [UNIQUE], email [UNIQUE], password_hash, role, full_name, phone, address, created_at)
-- **restaurants**(**restaurant_id**, name, cuisine_type, address, phone, delivery_time_min, min_order_amount, is_active, created_at)
-- **categories**(**category_id**, name [UNIQUE], description)
-- **menu_items**(**item_id**, restaurant_id *(FK → restaurants.restaurant_id)*, category_id *(FK → categories.category_id)*, name, description, price, is_available)
-- **orders**(**order_id**, user_id *(FK → users.user_id)*, restaurant_id *(FK → restaurants.restaurant_id)*, order_date, status, total_amount, delivery_address, notes)
-- **order_items**(**order_item_id**, order_id *(FK → orders.order_id)*, item_id *(FK → menu_items.item_id)*, quantity, unit_price) — `UNIQUE(order_id, item_id)`
-- **payments**(**payment_id**, order_id [UNIQUE] *(FK → orders.order_id)*, payment_method, payment_status, amount, paid_at)
-- **reviews**(**review_id**, user_id *(FK → users.user_id)*, restaurant_id *(FK → restaurants.restaurant_id)*, rating, comment, created_at)
-
-All tables satisfy **Third Normal Form (3NF)**: atomic attributes (1NF), no partial dependencies on composite keys (2NF), and no transitive non-key dependencies (3NF). Historical `unit_price` is intentionally snapshot-stored in `order_items` so future menu price updates do not corrupt past order invoices.
+> Note: The conceptual `Order` entity is implemented as `orders` in PostgreSQL because `ORDER` is a reserved SQL keyword. `Restaurant.Rating` is dynamically derived from `AVG(restaurant_review.rating)` rather than redundantly stored.
 
 ---
 
-## Chapter 5: Physical Design & Complex Queries
+## Chapter 5: Complex Queries ([`db/queries.sql`](../db/queries.sql))
 
-- **DBMS:** PostgreSQL 16 (`postgres:16-alpine`)
-- **DDL & Seed Data:** [`db/init.sql`](../db/init.sql) — includes `PRIMARY KEY`, `FOREIGN KEY` (`ON DELETE CASCADE` / `ON DELETE RESTRICT`), `UNIQUE`, `NOT NULL`, `CHECK` constraints, and 5–15 rows per table.
-- **3 Complex Queries:** [`db/queries.sql`](../db/queries.sql)
-  1. **Multi-table JOIN:** Joins 6 tables (`orders`, `users`, `restaurants`, `order_items`, `menu_items`, `payments`) to build a complete order ledger.
-  2. **GROUP BY + ORDER BY:** Calculates per-restaurant order count, total revenue, average order value, and average rating, ranked by revenue descending.
-  3. **Subquery:** Finds customers whose total non-cancelled order spending exceeds the platform-wide average customer spending.
+1. **Multi-table JOIN (7 tables):** Joins `orders`, `customer`, `member`, `restaurant`, `order_items`, `product`, and `address` to produce a complete order ledger with product summaries and delivery locations (handling `Self Pick-up` when `delivery_address_id IS NULL`).
+2. **GROUP BY + ORDER BY:** Aggregates order count, total revenue, average order value, cuisine list, and derived average rating per restaurant, sorted by revenue descending.
+3. **Subquery:** Finds customers whose total non-cancelled order spending exceeds the platform-wide average customer spending.

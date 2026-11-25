@@ -5,71 +5,105 @@
   <a href="/" style="font-size:0.9rem;font-weight:600;color:var(--muted);">← Back to all restaurants</a>
 </div>
 
-<section class="hero" style="padding:2.2rem 2rem;margin-bottom:2rem;">
+<section class="hero" style="padding:2.2rem 2rem;margin-bottom:1.75rem;">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
     <div>
-      <span class="hero-pill">{{ restaurant.cuisine_type }}</span>
+      <span class="hero-pill">{{ cuisines | join(' · ') }}</span>
       <h1 style="margin:0.35rem 0 0.45rem;">{{ restaurant.name }}</h1>
-      <p style="margin:0;opacity:0.92;font-size:0.96rem;">
-        📍 {{ restaurant.address }} · 📞 {{ restaurant.phone }}
+      <p style="margin:0;opacity:0.92;font-size:0.94rem;">
+        📍 {{ restaurant.street }} No:{{ restaurant.building_no or '-' }}, {{ restaurant.neighborhood }}, {{ restaurant.district }}/{{ restaurant.province }} · 📞 {{ restaurant.phone_number }}
       </p>
     </div>
-    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <div style="display:flex;gap:0.65rem;flex-wrap:wrap;">
       <div class="rating-pill" style="padding:0.45rem 0.9rem;font-size:0.95rem;">
         ★ {{ "%.1f"|format(restaurant.avg_rating) }} ({{ restaurant.review_count }} reviews)
       </div>
       <div class="rating-pill" style="padding:0.45rem 0.9rem;font-size:0.9rem;">
-        ⏱ {{ restaurant.delivery_time_min }} min · Min {{ "%.2f"|format(restaurant.min_order_amount) }} TL
+        Min. {{ "%.2f"|format(restaurant.min_order_amount) }} TL
       </div>
     </div>
   </div>
 </section>
 
+<div class="card" style="margin-bottom:1.75rem;">
+  <div class="card-body" style="padding:1rem 1.35rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;align-items:center;">
+    <div>
+      <strong style="font-size:0.86rem;color:var(--muted);text-transform:uppercase;">Delivery Options:</strong>
+      {% for dt in delivery_types %}
+        <span class="badge" style="background:#f1f5f9;color:var(--ink);margin-left:0.35rem;">{{ dt | replace('_', ' ') }}</span>
+      {% endfor %}
+    </div>
+    <details>
+      <summary>Working Hours (7 Days)</summary>
+      <div style="display:flex;gap:0.85rem;flex-wrap:wrap;margin-top:0.65rem;font-size:0.84rem;">
+        {% for wh in working_hours %}
+          <span><strong>{{ wh.day[:3] }}:</strong> {{ wh.opening_time.strftime('%H:%M') }}–{{ wh.closing_time.strftime('%H:%M') }}</span>
+        {% endfor %}
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="chip-row" style="margin-bottom:1.25rem;">
+  <a href="/restaurants/{{ restaurant.restaurant_id }}" class="chip {% if not selected_category %}active{% endif %}">All Categories</a>
+  {% for cat in categories %}
+    <a href="/restaurants/{{ restaurant.restaurant_id }}?category={{ cat | urlencode }}" class="chip {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
+  {% endfor %}
+</div>
+
 <form method="post" action="/restaurants/{{ restaurant.restaurant_id }}/order" id="orderForm">
   <div class="restaurant-layout">
     <div>
       <div class="section-header">
-        <h2>Menu</h2>
-        <span style="font-size:0.86rem;color:var(--muted);">{{ menu_items | length }} items available</span>
+        <h2>Menu Products</h2>
+        <span style="font-size:0.86rem;color:var(--muted);">{{ products | length }} items</span>
       </div>
 
-      {% for item in menu_items %}
+      {% for p in products %}
         <div class="menu-item-card">
           <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.25rem;">
-              <strong style="font-size:1.03rem;">{{ item.name }}</strong>
-              <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ item.category_name }}</span>
-              {% if not item.is_available %}
+              <strong style="font-size:1.03rem;">{{ p.product_name }}</strong>
+              <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ p.category }}</span>
+              {% if p.discount_available and p.discount_percentage %}
+                <span class="badge badge-discount">-{{ "%.0f"|format(p.discount_percentage) }}% OFF</span>
+              {% endif %}
+              {% if not p.is_available %}
                 <span class="badge badge-Cancelled">Sold Out</span>
               {% endif %}
             </div>
-            {% if item.description %}
-              <div style="font-size:0.86rem;color:var(--muted);margin-bottom:0.45rem;">{{ item.description }}</div>
+            {% if p.description %}
+              <div style="font-size:0.86rem;color:var(--muted);margin-bottom:0.45rem;">{{ p.description }}</div>
             {% endif %}
-            <div class="menu-item-price">{{ "%.2f"|format(item.price) }} TL</div>
+            <div style="display:flex;align-items:baseline;gap:0.55rem;">
+              <span class="menu-item-price">{{ "%.2f"|format(p.final_price) }} TL</span>
+              {% if p.discount_available and p.discount_percentage %}
+                <span style="font-size:0.86rem;color:var(--muted);text-decoration:line-through;">{{ "%.2f"|format(p.price) }} TL</span>
+              {% endif %}
+            </div>
           </div>
 
-          {% if item.is_available %}
+          {% if p.is_available %}
             <div class="qty-control">
-              <button type="button" class="qty-btn" onclick="changeQty({{ item.item_id }}, -1)">−</button>
+              <button type="button" class="qty-btn" onclick="changeQty({{ p.product_id }}, -1)">−</button>
               <input
                 type="number"
                 class="qty-input"
-                id="qty_{{ item.item_id }}"
-                name="qty_{{ item.item_id }}"
+                id="qty_{{ p.product_id }}"
+                name="qty_{{ p.product_id }}"
                 value="0"
                 min="0"
                 max="20"
-                data-price="{{ item.price }}"
-                data-name="{{ item.name }}"
+                data-price="{{ p.final_price }}"
+                data-name="{{ p.product_name }}"
                 onchange="recalcCart()"
               />
-              <button type="button" class="qty-btn" onclick="changeQty({{ item.item_id }}, 1)">+</button>
+              <button type="button" class="qty-btn" onclick="changeQty({{ p.product_id }}, 1)">+</button>
             </div>
           {% endif %}
         </div>
       {% else %}
-        <div class="card"><div class="card-body">No menu items added for this restaurant yet.</div></div>
+        <div class="card"><div class="card-body">No products match this category.</div></div>
       {% endfor %}
     </div>
 
@@ -82,7 +116,7 @@
           </p>
 
           <div id="cartSummary" style="font-size:0.88rem;color:var(--muted);padding:0.75rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:1rem;">
-            Select items from the menu to start your order.
+            Select products from the menu to start your order.
           </div>
 
           <div style="display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:1.15rem;margin-bottom:1.1rem;">
@@ -90,29 +124,49 @@
             <span id="cartTotal" style="color:var(--brand);">0.00 TL</span>
           </div>
 
-          {% if user %}
+          {% if user and user.role == 'customer' %}
             <div class="form-group">
-              <label for="delivery_address">Delivery Address</label>
-              <input id="delivery_address" name="delivery_address" type="text" class="form-control" value="{{ user.address }}" required />
+              <label for="delivery_type">Delivery Type</label>
+              <select id="delivery_type" name="delivery_type" class="form-control" onchange="toggleAddr()">
+                {% for dt in delivery_types %}
+                  <option value="{{ dt }}">{{ dt | replace('_', ' ') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group" id="addressGroup">
+              <label for="delivery_address_id">Saved Delivery Address</label>
+              {% if saved_addresses %}
+                <select id="delivery_address_id" name="delivery_address_id" class="form-control">
+                  {% for a in saved_addresses %}
+                    <option value="{{ a.address_id }}">
+                      {{ a.address_title or 'Address' }} — {{ a.district }}, {{ a.neighborhood }}, {{ a.street }}
+                    </option>
+                  {% endfor %}
+                </select>
+              {% else %}
+                <div style="font-size:0.84rem;color:var(--muted);">
+                  No saved addresses yet. <a href="/profile" style="color:var(--brand);font-weight:700;">Add one in Profile →</a>
+                </div>
+              {% endif %}
             </div>
 
             <div class="form-group">
               <label for="payment_method">Payment Method</label>
               <select id="payment_method" name="payment_method" class="form-control">
-                <option value="Credit Card">Credit Card</option>
-                <option value="Online Wallet">Online Wallet</option>
-                <option value="Cash on Delivery">Cash on Delivery</option>
+                {% for pm in payment_methods %}
+                  <option value="{{ pm }}">{{ pm }}</option>
+                {% endfor %}
               </select>
             </div>
 
-            <div class="form-group">
-              <label for="notes">Order Notes (optional)</label>
-              <input id="notes" name="notes" type="text" class="form-control" placeholder="e.g. Ring bell, no onions" />
-            </div>
-
             <button type="submit" class="btn btn-primary btn-block">Place Order</button>
+          {% elif user %}
+            <div style="font-size:0.88rem;color:var(--muted);background:#f8fafc;padding:0.85rem;border-radius:10px;">
+              You are signed in as <strong>{{ user.role | upper }}</strong>. Switch to a Customer account to place orders.
+            </div>
           {% else %}
-            <a href="/login" class="btn btn-primary btn-block">Sign In to Place Order</a>
+            <a href="/login" class="btn btn-primary btn-block">Sign In as Customer to Order</a>
           {% endif %}
         </div>
       </div>
@@ -122,97 +176,38 @@
 
 <section id="reviews" style="margin-top:3rem;">
   <div class="section-header">
-    <h2>Customer Reviews ({{ reviews | length }})</h2>
+    <div>
+      <h2>Verified Order Reviews ({{ reviews | length }})</h2>
+      <p style="margin:0.2rem 0 0;color:var(--muted);font-size:0.88rem;">
+        Every review is linked 1:1 to a Delivered order (submitted from <strong>My Orders</strong>).
+      </p>
+    </div>
   </div>
 
-  <div class="grid-2" style="align-items:start;">
-    <div class="card">
-      <div class="card-body">
-        <h3 style="margin:0 0 0.9rem;">Write a Review</h3>
-        {% if user %}
-          <form method="post" action="/restaurants/{{ restaurant.restaurant_id }}/reviews">
-            <div class="form-group">
-              <label for="rating">Rating</label>
-              <select id="rating" name="rating" class="form-control" required>
-                <option value="5">★★★★★ (5 — Excellent)</option>
-                <option value="4">★★★★☆ (4 — Very Good)</option>
-                <option value="3">★★★☆☆ (3 — Good)</option>
-                <option value="2">★★☆☆☆ (2 — Fair)</option>
-                <option value="1">★☆☆☆☆ (1 — Poor)</option>
-              </select>
+  <div class="grid-2">
+    {% for rev in reviews %}
+      <div class="card">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+            <div>
+              <strong>{{ rev.first_name }} {{ rev.last_name }}</strong>
+              <span style="font-size:0.78rem;color:var(--muted);">· Order #{{ rev.order_id }}</span>
             </div>
-            <div class="form-group">
-              <label for="comment">Your Review</label>
-              <textarea id="comment" name="comment" rows="3" class="form-control" placeholder="Share your experience with the food and delivery..." required></textarea>
-            </div>
-            <button type="submit" class="btn btn-dark">Publish Review</button>
-          </form>
-        {% else %}
-          <p style="color:var(--muted);margin-bottom:1rem;">Sign in to rate this restaurant and leave a review.</p>
-          <a href="/login" class="btn btn-primary btn-sm">Sign In</a>
-        {% endif %}
-      </div>
-    </div>
-
-    <div style="display:flex;flex-direction:column;gap:0.9rem;">
-      {% for rev in reviews %}
-        <div class="card">
-          <div class="card-body">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
-              <div>
-                <strong>{{ rev.full_name }}</strong>
-                <span style="font-size:0.8rem;color:var(--muted);">(@{{ rev.username }})</span>
-              </div>
-              <span class="badge" style="background:#fff7ed;color:#ea580c;">★ {{ rev.rating }} / 5</span>
-            </div>
-            <p style="margin:0.35rem 0 0.65rem;color:var(--ink-soft);font-size:0.93rem;">{{ rev.comment }}</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;color:var(--muted);">
-              <span>{{ rev.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-              {% if user and (user.user_id == rev.user_id or user.role == 'admin') %}
-                <div class="inline-actions">
-                  <form method="post" action="/reviews/{{ rev.review_id }}/delete" style="margin:0;">
-                    <input type="hidden" name="restaurant_id" value="{{ restaurant.restaurant_id }}" />
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this review?')">Delete</button>
-                  </form>
-                </div>
-              {% endif %}
-            </div>
-
-            {% if user and (user.user_id == rev.user_id or user.role == 'admin') %}
-              <details style="margin-top:0.75rem;">
-                <summary>Edit Review</summary>
-                <form method="post" action="/reviews/{{ rev.review_id }}/update" style="margin-top:0.7rem;">
-                  <input type="hidden" name="restaurant_id" value="{{ restaurant.restaurant_id }}" />
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>Rating</label>
-                      <select name="rating" class="form-control">
-                        {% for s in [5, 4, 3, 2, 1] %}
-                          <option value="{{ s }}" {% if rev.rating == s %}selected{% endif %}>{{ s }} Stars</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>Comment</label>
-                    <textarea name="comment" rows="2" class="form-control" required>{{ rev.comment }}</textarea>
-                  </div>
-                  <button type="submit" class="btn btn-secondary btn-sm">Save Changes</button>
-                </form>
-              </details>
-            {% endif %}
+            <span class="badge" style="background:#fff7ed;color:#ea580c;">★ {{ rev.rating }} / 5</span>
           </div>
+          <p style="margin:0.35rem 0 0.65rem;color:var(--ink-soft);font-size:0.93rem;">{{ rev.comment or 'No written comment.' }}</p>
+          <div style="font-size:0.8rem;color:var(--muted);">{{ rev.date.strftime('%Y-%m-%d %H:%M') }}</div>
         </div>
-      {% else %}
-        <div class="card"><div class="card-body" style="color:var(--muted);">No reviews yet. Be the first to review!</div></div>
-      {% endfor %}
-    </div>
+      </div>
+    {% else %}
+      <div class="card"><div class="card-body" style="color:var(--muted);">No reviews yet for this restaurant.</div></div>
+    {% endfor %}
   </div>
 </section>
 
 <script>
-  function changeQty(itemId, delta) {
-    const input = document.getElementById('qty_' + itemId);
+  function changeQty(pid, delta) {
+    const input = document.getElementById('qty_' + pid);
     const next = Math.max(0, Math.min(20, (parseInt(input.value, 10) || 0) + delta));
     input.value = next;
     recalcCart();
@@ -233,8 +228,17 @@
     });
     document.getElementById('cartSummary').innerHTML = lines.length
       ? lines.join('')
-      : 'Select items from the menu to start your order.';
+      : 'Select products from the menu to start your order.';
     document.getElementById('cartTotal').textContent = total.toFixed(2) + ' TL';
   }
+
+  function toggleAddr() {
+    const dt = document.getElementById('delivery_type');
+    const ag = document.getElementById('addressGroup');
+    if (dt && ag) {
+      ag.style.display = dt.value === 'Pick_up' ? 'none' : 'block';
+    }
+  }
+  toggleAddr();
 </script>
 {% endblock %}

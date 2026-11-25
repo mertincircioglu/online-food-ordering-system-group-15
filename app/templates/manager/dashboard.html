@@ -1,0 +1,93 @@
+{% extends "manager/base_manager.html" %}
+{% block title %}Manager Portal — {{ restaurant.name }}{% endblock %}
+{% block manager_content %}
+<div class="section-header">
+  <div>
+    <h1>{{ restaurant.name }}</h1>
+    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
+      📍 {{ restaurant.street }}, {{ restaurant.neighborhood }}, {{ restaurant.district }}/{{ restaurant.province }}
+    </p>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Restaurant Revenue</div>
+    <div class="kpi-value" style="color:var(--brand);">{{ "%.2f"|format(kpis.revenue) }} TL</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Orders</div>
+    <div class="kpi-value">{{ kpis.order_count }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Menu Products</div>
+    <div class="kpi-value">{{ kpis.product_count }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Derived Average Rating</div>
+    <div class="kpi-value">★ {{ "%.2f"|format(restaurant.avg_rating) }} <span style="font-size:0.9rem;color:var(--muted);">({{ restaurant.review_count }})</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">Update Restaurant Details, Cuisines &amp; Delivery Types</h3>
+    <form method="post" action="/manager/restaurant/update">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Restaurant Name</label>
+          <input name="name" class="form-control" value="{{ restaurant.name }}" required />
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input name="phone_number" class="form-control" value="{{ restaurant.phone_number }}" required />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input name="email" type="email" class="form-control" value="{{ restaurant.email }}" required />
+        </div>
+        <div class="form-group">
+          <label>Min. Order Amount (TL)</label>
+          <input name="min_order_amount" type="number" step="0.01" min="0" class="form-control" value="{{ restaurant.min_order_amount }}" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Cuisine Types (comma-separated)</label>
+        <input name="cuisines" class="form-control" value="{{ cuisines_str }}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Available Delivery Types</label>
+        <div style="display:flex;gap:1.25rem;flex-wrap:wrap;padding-top:0.25rem;">
+          {% for dt in all_delivery_types %}
+            <label style="display:inline-flex;align-items:center;gap:0.4rem;font-weight:500;">
+              <input type="checkbox" name="delivery_types" value="{{ dt }}" {% if dt in selected_delivery_types %}checked{% endif %} />
+              {{ dt | replace('_', ' ') }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Restaurant Settings</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h3 style="margin:0 0 1rem;">Customer Reviews ({{ reviews | length }})</h3>
+    {% for rev in reviews %}
+      <div style="border-bottom:1px solid var(--border);padding:0.75rem 0;">
+        <div style="display:flex;justify-content:space-between;">
+          <strong>{{ rev.first_name }} {{ rev.last_name }} <span style="font-size:0.8rem;color:var(--muted);">· Order #{{ rev.order_id }}</span></strong>
+          <span class="badge" style="background:#fff7ed;color:#ea580c;">★ {{ rev.rating }} / 5</span>
+        </div>
+        <p style="margin:0.35rem 0 0;font-size:0.9rem;color:var(--ink-soft);">{{ rev.comment or 'No written comment.' }}</p>
+      </div>
+    {% else %}
+      <p style="color:var(--muted);">No customer reviews yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
