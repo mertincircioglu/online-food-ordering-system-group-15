@@ -27,7 +27,7 @@ templates = Jinja2Templates(directory="templates")
 
 DELIVERY_TYPES = ["Platform_carrier", "Restaurant_carrier", "Pick_up"]
 PAYMENT_METHODS = ["Online", "Card at the door", "Cash at the door"]
-ORDER_STATUSES = ["Order Confirmation", "Preparing", "On the way", "Delivered", "Cancelled"]
+ORDER_STATUSES = ["Order Confirmed", "Preparing", "On the way", "Delivered", "Cancelled"]
 PRODUCT_CATEGORIES = ["Main Course", "Drinks", "Sweets", "Other"]
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -573,7 +573,7 @@ async def place_order(request: Request, restaurant_id: int):
                     delivery_type, payment_method, order_status,
                     estimated_delivery_time, total_price
                 )
-                VALUES (%s, %s, %s, %s, %s, 'Order Confirmation', %s, %s)
+                VALUES (%s, %s, %s, %s, %s, 'Order Confirmed', %s, %s)
                 RETURNING order_id
                 """,
                 (
@@ -675,14 +675,14 @@ def update_my_order(
         UPDATE orders
         SET payment_method = %s,
             delivery_address_id = CASE WHEN delivery_type = 'Pick_up' THEN NULL ELSE COALESCE(%s, delivery_address_id) END
-        WHERE order_id = %s AND customer_id = %s AND order_status = 'Order Confirmation'
+        WHERE order_id = %s AND customer_id = %s AND order_status = 'Order Confirmed'
         """,
         (payment_method, addr_val, order_id, user["customer_id"]),
     )
     if updated:
         flash(request, f"Order #{order_id} updated.", "success")
     else:
-        flash(request, "Only orders in 'Order Confirmation' status can be edited.", "warning")
+        flash(request, "Only orders in 'Order Confirmed' status can be edited.", "warning")
     return RedirectResponse("/my-orders", status_code=303)
 
 
@@ -695,14 +695,14 @@ def delete_my_order(request: Request, order_id: int):
     deleted = execute_query(
         """
         DELETE FROM orders
-        WHERE order_id = %s AND customer_id = %s AND order_status = 'Order Confirmation'
+        WHERE order_id = %s AND customer_id = %s AND order_status = 'Order Confirmed'
         """,
         (order_id, user["customer_id"]),
     )
     if deleted:
         flash(request, f"Order #{order_id} cancelled and removed.", "info")
     else:
-        flash(request, "Only orders in 'Order Confirmation' status can be cancelled.", "warning")
+        flash(request, "Only orders in 'Order Confirmed' status can be cancelled.", "warning")
     return RedirectResponse("/my-orders", status_code=303)
 
 

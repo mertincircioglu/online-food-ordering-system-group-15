@@ -158,8 +158,8 @@ CREATE TABLE orders (
     payment_method          VARCHAR(30)    NOT NULL
                             CHECK (payment_method IN ('Online', 'Card at the door', 'Cash at the door')),
     order_date              TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    order_status            VARCHAR(30)    NOT NULL DEFAULT 'Order Confirmation'
-                            CHECK (order_status IN ('Order Confirmation', 'Preparing', 'On the way', 'Delivered', 'Cancelled')),
+    order_status            VARCHAR(30)    NOT NULL DEFAULT 'Order Confirmed'
+                            CHECK (order_status IN ('Order Confirmed', 'Preparing', 'On the way', 'Delivered', 'Cancelled')),
     estimated_delivery_time INT            NOT NULL CHECK (estimated_delivery_time > 0),
     total_price             NUMERIC(10, 2) NOT NULL CHECK (total_price >= 0)
 );
@@ -319,7 +319,7 @@ INSERT INTO orders (restaurant_id, customer_id, delivery_address_id, delivery_ty
 (2, 2, 8,    'Restaurant_carrier', 'Card at the door', NOW() - INTERVAL '3 days',  'Delivered',          24, 580.00),
 (3, 3, 9,    'Platform_carrier',   'Online',           NOW() - INTERVAL '2 days',  'Delivered',          22, 736.00),
 (4, 1, 6,    'Platform_carrier',   'Online',           NOW() - INTERVAL '4 hours', 'Preparing',          38, 612.00),
-(2, 1, NULL, 'Pick_up',            'Cash at the door', NOW() - INTERVAL '1 hour',  'Order Confirmation', 15, 365.00),
+(2, 1, NULL, 'Pick_up',            'Cash at the door', NOW() - INTERVAL '1 hour',  'Order Confirmed', 15, 365.00),
 (5, 4, 10,   'Restaurant_carrier', 'Online',           NOW() - INTERVAL '1 day',   'Delivered',          26, 450.00);
 
 -- 14. Order Items (14 records matching exact total_price of each order)

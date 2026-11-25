@@ -37,7 +37,7 @@ All passwords are stored securely using **bcrypt** (cost factor 12). Sign in usi
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@biteflow.com` | `admin123` | System-wide CRUD on restaurants (address, cuisines, delivery types, working hours), products, orders, reviews moderation, members & restaurant managers, plus live SQL analytics (`7-table JOIN`, `GROUP BY + ORDER BY`, `Subquery`). |
 | **Restaurant Manager** | `manager1@biteflow.com` | `manager123` | Dedicated Manager Portal for **Anatolia Grill House**: update restaurant profile/cuisines/delivery types, Insert/Update/Delete own menu products & discounts, update incoming order statuses, view customer reviews. |
-| **Customer** | `customer1@atilim.edu.tr` | `customer123` | Search/filter restaurants by cuisine & delivery type, place orders (delivery or self pick-up), update/cancel own `Order Confirmation` orders, submit/edit/delete 1:1 reviews on `Delivered` orders, manage saved delivery addresses & payment methods. Blocked (`403 Forbidden`) from `/admin/*` and `/manager/*`. |
+| **Customer** | `customer1@atilim.edu.tr` | `customer123` | Search/filter restaurants by cuisine & delivery type, place orders (delivery or self pick-up), update/cancel own `Order Confirmed` orders, submit/edit/delete 1:1 reviews on `Delivered` orders, manage saved delivery addresses & payment methods. Blocked (`403 Forbidden`) from `/admin/*` and `/manager/*`. |
 
 Additional seeded accounts:
 - Admins: `ops@biteflow.com`, `support@biteflow.com` (`admin123`)

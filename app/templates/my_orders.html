@@ -5,7 +5,7 @@
   <div>
     <h1>My Orders</h1>
     <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
-      Edit or cancel orders in <strong>Order Confirmation</strong> status, and rate &amp; review your <strong>Delivered</strong> orders.
+      Edit or cancel orders in <strong>Order Confirmed</strong> status, and rate &amp; review your <strong>Delivered</strong> orders.
     </p>
   </div>
   <a href="/" class="btn btn-primary">+ New Order</a>
@@ -38,7 +38,7 @@
             <div style="margin-top:0.3rem;"><strong>Location:</strong> {{ o.delivery_location }}</div>
           </div>
 
-          {% if o.order_status == 'Order Confirmation' %}
+          {% if o.order_status == 'Order Confirmed' %}
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
               <details style="flex:1;min-width:260px;">
                 <summary>Edit Payment Method / Delivery Address</summary>
