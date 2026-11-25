@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}BiteFlow — Online Food Ordering System{% endblock %}</title>
+  <script>
+    (function() {
+      var saved = localStorage.getItem('biteflow_theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
@@ -36,6 +42,7 @@
           <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
           <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
         {% endif %}
+        <button type="button" id="themeToggle" class="theme-toggle" aria-label="Toggle Light/Dark Mode" title="Switch Light / Dark Mode">🌙</button>
       </nav>
     </div>
   </header>
@@ -58,5 +65,28 @@
   <footer class="footer">
     <strong>BiteFlow</strong> — Online Food Ordering System · CMPE341 Database Design &amp; Management (Group 15) · 15 Normalized PostgreSQL Tables
   </footer>
+
+  <script>
+    (function() {
+      var btn = document.getElementById('themeToggle');
+      function syncIcon() {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        btn.textContent = isDark ? '☀️' : '🌙';
+        btn.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      }
+      syncIcon();
+      btn.addEventListener('click', function() {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('biteflow_theme', 'light');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          localStorage.setItem('biteflow_theme', 'dark');
+        }
+        syncIcon();
+      });
+    })();
+  </script>
 </body>
 </html>

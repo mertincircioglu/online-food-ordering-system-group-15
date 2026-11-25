@@ -211,7 +211,7 @@ ORDER BY total_spent DESC;</pre>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:0.65rem;">
       {% for t in table_stats %}
-        <div style="border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.85rem;display:flex;justify-content:space-between;align-items:center;background:#f8fafc;">
+        <div class="stat-tile">
           <code style="font-size:0.82rem;font-weight:700;color:var(--ink);">{{ t.table_name }}</code>
           <span class="badge {% if t.row_count >= 3 %}badge-active{% else %}badge-inactive{% endif %}">{{ t.row_count }} rows</span>
         </div>

@@ -21,8 +21,8 @@
               <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
                 <strong style="font-size:1.1rem;">Order #{{ o.order_id }} — {{ o.restaurant_name }}</strong>
                 <span class="badge badge-{{ o.order_status | replace(' ', '') }}">{{ o.order_status }}</span>
-                <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ o.delivery_type | replace('_', ' ') }}</span>
-                <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ o.payment_method }}</span>
+                <span class="badge badge-neutral">{{ o.delivery_type | replace('_', ' ') }}</span>
+                <span class="badge badge-neutral">{{ o.payment_method }}</span>
               </div>
               <div style="font-size:0.84rem;color:var(--muted);margin-top:0.25rem;">
                 Placed on {{ o.order_date.strftime('%Y-%m-%d %H:%M') }} · Est. {{ o.estimated_delivery_time }} min
@@ -33,7 +33,7 @@
             </div>
           </div>
 
-          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;margin-bottom:0.85rem;font-size:0.9rem;">
+          <div class="soft-box" style="margin-bottom:0.85rem;font-size:0.9rem;">
             <div><strong>Products:</strong> {{ o.items_summary or '—' }}</div>
             <div style="margin-top:0.3rem;"><strong>Location:</strong> {{ o.delivery_location }}</div>
           </div>
@@ -76,8 +76,8 @@
               </form>
             </div>
           {% elif o.can_late_cancel %}
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:0.75rem 1rem;">
-              <span style="font-size:0.86rem;color:#991b1b;">More than 1 hour has passed since ordering without delivery. Per platform policy, you may cancel this order.</span>
+            <div class="danger-box" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+              <span style="font-size:0.86rem;">More than 1 hour has passed since ordering without delivery. Per platform policy, you may cancel this order.</span>
               <form method="post" action="/my-orders/{{ o.order_id }}/delete" style="margin:0;">
                 <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Cancel delayed Order #{{ o.order_id }}?')">
                   Cancel Delayed Order (&gt;1h)
@@ -86,10 +86,10 @@
             </div>
           {% elif o.order_status == 'Delivered' %}
             {% if o.restaurant_review_id %}
-              <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:0.8rem 1rem;">
+              <div class="review-box">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
                   <div>
-                    <strong>Your Review:</strong> <span class="badge" style="background:#fff;color:#ea580c;">★ {{ o.review_rating }} / 5</span>
+                    <strong>Your Review:</strong> <span class="badge badge-manager">★ {{ o.review_rating }} / 5</span>
                     <span style="margin-left:0.5rem;font-size:0.9rem;">{{ o.review_comment or '' }}</span>
                   </div>
                   <form method="post" action="/reviews/{{ o.restaurant_review_id }}/delete" style="margin:0;">

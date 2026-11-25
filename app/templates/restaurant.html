@@ -30,7 +30,7 @@
     <div>
       <strong style="font-size:0.86rem;color:var(--muted);text-transform:uppercase;">Delivery Options:</strong>
       {% for dt in delivery_types %}
-        <span class="badge" style="background:#f1f5f9;color:var(--ink);margin-left:0.35rem;">{{ dt | replace('_', ' ') }}</span>
+        <span class="badge badge-neutral" style="margin-left:0.35rem;">{{ dt | replace('_', ' ') }}</span>
       {% endfor %}
     </div>
     <details>
@@ -69,7 +69,7 @@
           <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.25rem;">
               <strong style="font-size:1.03rem;">{{ p.product_name }}</strong>
-              <span class="badge" style="background:#f1f5f9;color:var(--ink-soft);">{{ p.category }}</span>
+              <span class="badge badge-neutral">{{ p.category }}</span>
               {% if p.discount_available and p.discount_percentage %}
                 <span class="badge badge-discount">-{{ "%.0f"|format(p.discount_percentage) }}% OFF</span>
               {% endif %}
@@ -167,7 +167,7 @@
 
             <button type="submit" class="btn btn-primary btn-block">Place Order</button>
           {% elif user %}
-            <div style="font-size:0.88rem;color:var(--muted);background:#f8fafc;padding:0.85rem;border-radius:10px;">
+            <div class="soft-box" style="font-size:0.88rem;color:var(--muted);">
               You are signed in as <strong>{{ user.role | upper }}</strong>. Switch to a Customer account to place orders.
             </div>
           {% else %}
