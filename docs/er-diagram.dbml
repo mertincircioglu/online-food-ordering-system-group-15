@@ -14,6 +14,7 @@ Table member {
   last_name varchar(60) [not null]
   password_hash text [not null]
   phone_number varchar(25) [not null]
+  is_banned boolean [not null, default: false]
 }
 
 Table admin {

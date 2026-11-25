@@ -140,7 +140,7 @@ def login_submit(
 ):
     member = fetch_one(
         """
-        SELECT m.member_id, m.email, m.first_name, m.last_name, m.password_hash,
+        SELECT m.member_id, m.email, m.first_name, m.last_name, m.password_hash, m.is_banned,
                CASE
                    WHEN a.admin_id IS NOT NULL THEN 'admin'
                    WHEN rm.manager_id IS NOT NULL THEN 'manager'
@@ -155,6 +155,10 @@ def login_submit(
     )
     if not member or not verify_password(password, member["password_hash"]):
         flash(request, "Invalid email or password.", "error")
+        return RedirectResponse("/login", status_code=303)
+
+    if member["is_banned"]:
+        flash(request, "This account has been banned by an administrator.", "error")
         return RedirectResponse("/login", status_code=303)
 
     request.session["member_id"] = member["member_id"]
@@ -1220,6 +1224,7 @@ def manager_orders(request: Request):
         LEFT  JOIN order_items oi ON o.order_id            = oi.order_id
         LEFT  JOIN product p      ON oi.product_id         = p.product_id
         WHERE o.restaurant_id = %s
+          AND o.order_status IN ('Order Confirmed', 'Preparing', 'On the way')
         GROUP BY o.order_id, m.first_name, m.last_name, m.phone_number, a.address_id
         ORDER BY o.order_date DESC
         """,
@@ -1229,6 +1234,40 @@ def manager_orders(request: Request):
         request,
         "manager/orders.html",
         {"active_nav": "orders", "orders": orders, "order_statuses": ORDER_STATUSES},
+    )
+
+
+@app.get("/manager/past-orders", response_class=HTMLResponse)
+def manager_past_orders(request: Request):
+    user, blocked = require_manager(request)
+    if blocked:
+        return blocked
+
+    orders = fetch_all(
+        """
+        SELECT
+            o.*,
+            m.first_name || ' ' || m.last_name AS customer_name,
+            m.phone_number                     AS customer_phone,
+            COALESCE(a.district || ', ' || a.neighborhood || ', ' || a.street, 'Self Pick-up') AS delivery_location,
+            STRING_AGG(p.product_name || ' × ' || oi.quantity, ', ' ORDER BY p.product_name) AS items_summary
+        FROM orders o
+        INNER JOIN customer c     ON o.customer_id         = c.customer_id
+        INNER JOIN member m       ON c.member_id           = m.member_id
+        LEFT  JOIN address a      ON o.delivery_address_id = a.address_id
+        LEFT  JOIN order_items oi ON o.order_id            = oi.order_id
+        LEFT  JOIN product p      ON oi.product_id         = p.product_id
+        WHERE o.restaurant_id = %s
+          AND o.order_status IN ('Delivered', 'Cancelled')
+        GROUP BY o.order_id, m.first_name, m.last_name, m.phone_number, a.address_id
+        ORDER BY o.order_date DESC
+        """,
+        (user["managed_restaurant_id"],),
+    )
+    return render(
+        request,
+        "manager/past_orders.html",
+        {"active_nav": "past_orders", "orders": orders},
     )
 
 
@@ -1242,7 +1281,10 @@ def manager_order_update(request: Request, order_id: int, order_status: str = Fo
         "UPDATE orders SET order_status = %s WHERE order_id = %s AND restaurant_id = %s",
         (order_status, order_id, user["managed_restaurant_id"]),
     )
-    flash(request, f"Order #{order_id} moved to '{order_status}'.", "success")
+    if order_status in ("Delivered", "Cancelled"):
+        flash(request, f"Order #{order_id} marked as '{order_status}' and moved to Past Orders.", "success")
+    else:
+        flash(request, f"Order #{order_id} moved to '{order_status}'.", "success")
     return RedirectResponse("/manager/orders", status_code=303)
 
 
@@ -1719,7 +1761,7 @@ def admin_members(request: Request):
     members = fetch_all(
         """
         SELECT
-            m.member_id, m.email, m.first_name, m.middle_name, m.last_name, m.phone_number,
+            m.member_id, m.email, m.first_name, m.middle_name, m.last_name, m.phone_number, m.is_banned,
             CASE
                 WHEN a.admin_id IS NOT NULL THEN 'admin'
                 WHEN rm.manager_id IS NOT NULL THEN 'manager'
@@ -1776,6 +1818,24 @@ def admin_create_manager(
         flash(request, f"Restaurant Manager '{email.strip()}' created.", "success")
     except pg_errors.UniqueViolation:
         flash(request, "That email is already registered.", "error")
+    return RedirectResponse("/admin/members", status_code=303)
+
+
+@app.post("/admin/members/{member_id}/toggle-ban")
+def admin_member_toggle_ban(request: Request, member_id: int):
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    if member_id == user["member_id"]:
+        flash(request, "You cannot ban your own active admin account.", "warning")
+        return RedirectResponse("/admin/members", status_code=303)
+    row = fetch_one(
+        "UPDATE member SET is_banned = NOT is_banned WHERE member_id = %s RETURNING email, is_banned",
+        (member_id,),
+    )
+    if row:
+        state = "banned" if row["is_banned"] else "unbanned"
+        flash(request, f"Member '{row['email']}' has been {state}.", "warning" if row["is_banned"] else "success")
     return RedirectResponse("/admin/members", status_code=303)
 
 

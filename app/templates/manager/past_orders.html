@@ -1,0 +1,55 @@
+{% extends "manager/base_manager.html" %}
+{% block title %}Past Orders — Manager Portal{% endblock %}
+{% block manager_content %}
+<div class="section-header">
+  <div>
+    <h1>Past Orders (Completed &amp; Cancelled)</h1>
+    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.9rem;">
+      Archive of all Delivered and Cancelled orders for {{ user.managed_restaurant_name }}.
+    </p>
+  </div>
+  <a href="/manager/orders" class="btn btn-secondary btn-sm">← Back to Incoming Orders</a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Customer &amp; Delivery</th>
+            <th>Products</th>
+            <th>Total &amp; Payment</th>
+            <th>Final Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+            <tr>
+              <td>
+                <strong>#{{ o.order_id }}</strong>
+                <div style="font-size:0.78rem;color:var(--muted);">{{ o.order_date.strftime('%Y-%m-%d %H:%M') }}</div>
+              </td>
+              <td>
+                <strong>{{ o.customer_name }}</strong> ({{ o.customer_phone }})
+                <div style="font-size:0.8rem;color:var(--muted);">{{ o.delivery_type | replace('_', ' ') }} · {{ o.delivery_location }}</div>
+              </td>
+              <td style="font-size:0.85rem;">{{ o.items_summary }}</td>
+              <td>
+                <strong>{{ "%.2f"|format(o.total_price) }} TL</strong>
+                <div style="font-size:0.78rem;color:var(--muted);">{{ o.payment_method }}</div>
+              </td>
+              <td>
+                <span class="badge badge-{{ o.order_status | replace(' ', '') }}">{{ o.order_status }}</span>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem;">No past orders yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -2,7 +2,13 @@
 {% block title %}Incoming Orders — Manager Portal{% endblock %}
 {% block manager_content %}
 <div class="section-header">
-  <h1>Incoming Orders</h1>
+  <div>
+    <h1>Incoming Orders (Active)</h1>
+    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.9rem;">
+      Once an order is marked as <strong>Delivered</strong> or <strong>Cancelled</strong>, it moves automatically to <a href="/manager/past-orders" style="color:var(--brand);font-weight:700;">Past Orders</a>.
+    </p>
+  </div>
+  <a href="/manager/past-orders" class="btn btn-secondary btn-sm">View Past Orders →</a>
 </div>
 
 <div class="card">

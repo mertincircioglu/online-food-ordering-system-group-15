@@ -34,16 +34,19 @@
 <div class="card">
   <div class="card-body">
     <h3 style="margin:0 0 1rem;">All Members ({{ members | length }})</h3>
+    <p style="margin:0 0 1rem;font-size:0.86rem;color:var(--muted);">
+      <strong>Ban</strong> blocks sign-in while preserving order &amp; review history; <strong>Delete</strong> permanently removes the member record.
+    </p>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Member ID</th>
+            <th>ID</th>
             <th>Full Name</th>
             <th>Email &amp; Phone</th>
-            <th>Subclass Role</th>
+            <th>Role &amp; Status</th>
             <th>Details</th>
-            <th>Delete</th>
+            <th>Actions (BAN / DELETE)</th>
           </tr>
         </thead>
         <tbody>
@@ -55,7 +58,14 @@
                 <code>{{ m.email }}</code>
                 <div style="font-size:0.8rem;color:var(--muted);">{{ m.phone_number }}</div>
               </td>
-              <td><span class="badge badge-{{ m.role }}">{{ m.role | upper }}</span></td>
+              <td>
+                <span class="badge badge-{{ m.role }}">{{ m.role | upper }}</span>
+                {% if m.is_banned %}
+                  <span class="badge badge-inactive" style="margin-left:0.25rem;">BANNED</span>
+                {% else %}
+                  <span class="badge badge-active" style="margin-left:0.25rem;">Active</span>
+                {% endif %}
+              </td>
               <td style="font-size:0.84rem;color:var(--muted);">
                 {% if m.managed_restaurant %}Manages: <strong>{{ m.managed_restaurant }}</strong>
                 {% elif m.gender %}Gender: {{ m.gender }}
@@ -63,9 +73,18 @@
               </td>
               <td>
                 {% if m.member_id != user.member_id %}
-                  <form method="post" action="/admin/members/{{ m.member_id }}/delete" style="margin:0;">
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete member {{ m.email }}?')">Delete</button>
-                  </form>
+                  <div class="inline-actions">
+                    <form method="post" action="/admin/members/{{ m.member_id }}/toggle-ban" style="margin:0;">
+                      {% if m.is_banned %}
+                        <button type="submit" class="btn btn-secondary btn-sm">Unban</button>
+                      {% else %}
+                        <button type="submit" class="btn btn-dark btn-sm" onclick="return confirm('Ban {{ m.email }}? They will be blocked from signing in.')">Ban</button>
+                      {% endif %}
+                    </form>
+                    <form method="post" action="/admin/members/{{ m.member_id }}/delete" style="margin:0;">
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Permanently delete member {{ m.email }} and all their records?')">Delete</button>
+                    </form>
+                  </div>
                 {% else %}
                   <span style="font-size:0.8rem;color:var(--muted);">Current user</span>
                 {% endif %}

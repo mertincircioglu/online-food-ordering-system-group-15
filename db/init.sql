@@ -16,7 +16,8 @@ CREATE TABLE member (
     middle_name   VARCHAR(60),
     last_name     VARCHAR(60)  NOT NULL,
     password_hash TEXT         NOT NULL,
-    phone_number  VARCHAR(25)  NOT NULL
+    phone_number  VARCHAR(25)  NOT NULL,
+    is_banned     BOOLEAN      NOT NULL DEFAULT FALSE
 );
 
 -- ----------------------------------------------------------------------------

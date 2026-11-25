@@ -6,7 +6,7 @@ All PostgreSQL tables, queries, and web app features are synchronized 1-to-1 wit
 
 ## Relational Schema Mapping (15 Normalized Tables)
 
-1. **member**(**member_id**, email [UNIQUE], first_name, middle_name, last_name, password_hash, phone_number)
+1. **member**(**member_id**, email [UNIQUE], first_name, middle_name, last_name, password_hash, phone_number, is_banned)
 2. **admin**(**admin_id**, member_id [UNIQUE, FK → member.member_id])
 3. **customer**(**customer_id**, member_id [UNIQUE, FK → member.member_id], gender)
 4. **restaurant_manager**(**manager_id**, member_id [UNIQUE, FK → member.member_id], restaurant_id [FK → restaurant.restaurant_id])

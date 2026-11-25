@@ -31,6 +31,7 @@ def get_current_user(request: Request):
             m.middle_name,
             m.last_name,
             m.phone_number,
+            m.is_banned,
             a.admin_id,
             rm.manager_id,
             rm.restaurant_id AS managed_restaurant_id,
@@ -53,6 +54,9 @@ def get_current_user(request: Request):
         (member_id,),
     )
     if not row:
+        return None
+    if row["is_banned"]:
+        request.session.clear()
         return None
     parts = [row["first_name"], row["middle_name"], row["last_name"]]
     row["full_name"] = " ".join(p for p in parts if p)
