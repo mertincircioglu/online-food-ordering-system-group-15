@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}My Profile — BiteFlow{% endblock %}
 {% block content %}
 <div class="section-header">
@@ -154,7 +155,7 @@
       <h3 style="margin:0 0 1rem;">Saved Payment Methods ({{ saved_payments | length }})</h3>
       {% for pay in saved_payments %}
         <div style="border:1px solid var(--border);border-radius:10px;padding:0.75rem 1rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:0.9rem;font-weight:600;">💳 {{ pay.saved_payment_info }}</span>
+          <span class="meta-item" style="font-size:0.9rem;font-weight:600;">{{ icon('credit-card', 16) }} {{ pay.saved_payment_info }}</span>
           <form method="post" action="/profile/payments/{{ pay.payment_info_id }}/delete" style="margin:0;">
             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
           </form>

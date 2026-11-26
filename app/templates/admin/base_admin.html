@@ -1,21 +1,22 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block body %}
 <div class="admin-shell">
-  <aside class="admin-sidebar">
+  <aside class="admin-sidebar" aria-label="Admin Navigation">
     <div class="admin-sidebar-title">System Administration</div>
-    <a href="/admin" class="admin-nav-link {% if active_nav == 'dashboard' %}active{% endif %}">📊 Dashboard &amp; SQL</a>
-    <a href="/admin/restaurants" class="admin-nav-link {% if active_nav == 'restaurants' %}active{% endif %}">🏪 Restaurants</a>
-    <a href="/admin/products" class="admin-nav-link {% if active_nav == 'products' %}active{% endif %}">🍔 Products</a>
-    <a href="/admin/orders" class="admin-nav-link {% if active_nav == 'orders' %}active{% endif %}">📦 Orders</a>
-    <a href="/admin/reviews" class="admin-nav-link {% if active_nav == 'reviews' %}active{% endif %}">⭐ Reviews</a>
-    <a href="/admin/members" class="admin-nav-link {% if active_nav == 'members' %}active{% endif %}">👥 Members &amp; Managers</a>
+    <a href="/admin" class="admin-nav-link {% if active_nav == 'dashboard' %}active{% endif %}">{{ icon('bar-chart', 18) }} Dashboard &amp; SQL</a>
+    <a href="/admin/restaurants" class="admin-nav-link {% if active_nav == 'restaurants' %}active{% endif %}">{{ icon('store', 18) }} Restaurants</a>
+    <a href="/admin/products" class="admin-nav-link {% if active_nav == 'products' %}active{% endif %}">{{ icon('utensils', 18) }} Products</a>
+    <a href="/admin/orders" class="admin-nav-link {% if active_nav == 'orders' %}active{% endif %}">{{ icon('package', 18) }} Orders</a>
+    <a href="/admin/reviews" class="admin-nav-link {% if active_nav == 'reviews' %}active{% endif %}">{{ icon('star', 18) }} Reviews</a>
+    <a href="/admin/members" class="admin-nav-link {% if active_nav == 'members' %}active{% endif %}">{{ icon('users', 18) }} Members &amp; Managers</a>
     <div class="admin-sidebar-title" style="margin-top:1rem;">Storefront</div>
-    <a href="/" class="admin-nav-link">← View Public Site</a>
+    <a href="/" class="admin-nav-link">{{ icon('arrow-left', 18) }} View Public Site</a>
   </aside>
 
-  <section class="admin-main">
+  <section id="main-content" class="admin-main">
     {% if flashes %}
-      <div class="flash-stack">
+      <div class="flash-stack" role="status" aria-live="polite">
         {% for f in flashes %}
           <div class="alert alert-{{ f.category }}"><span>{{ f.message }}</span></div>
         {% endfor %}

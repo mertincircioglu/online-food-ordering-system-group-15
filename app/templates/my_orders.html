@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}My Orders — BiteFlow{% endblock %}
 {% block content %}
 <div class="section-header">
   <div>
     <h1>My Orders</h1>
     <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
-      Edit or cancel orders in <strong>Order Confirmed</strong> status, and rate &amp; review your <strong>Delivered</strong> orders.
+      Edit or cancel orders in <strong>Order Confirmed</strong> status, track live progress, and review your <strong>Delivered</strong> orders.
     </p>
   </div>
   <a href="/" class="btn btn-primary">+ New Order</a>
@@ -14,24 +15,38 @@
 {% if orders %}
   <div style="display:flex;flex-direction:column;gap:1.15rem;">
     {% for o in orders %}
+      {% set step_idx = 1 if o.order_status == 'Order Confirmed' else (2 if o.order_status == 'Preparing' else (3 if o.order_status == 'On the way' else (4 if o.order_status == 'Delivered' else 0))) %}
       <div class="card">
         <div class="card-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:0.85rem;">
             <div>
               <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
-                <strong style="font-size:1.1rem;">Order #{{ o.order_id }} — {{ o.restaurant_name }}</strong>
+                <strong style="font-size:1.12rem;">Order #{{ o.order_id }} — {{ o.restaurant_name }}</strong>
                 <span class="badge badge-{{ o.order_status | replace(' ', '') }}">{{ o.order_status }}</span>
                 <span class="badge badge-neutral">{{ o.delivery_type | replace('_', ' ') }}</span>
                 <span class="badge badge-neutral">{{ o.payment_method }}</span>
               </div>
-              <div style="font-size:0.84rem;color:var(--muted);margin-top:0.25rem;">
+              <div style="font-size:0.84rem;color:var(--muted);margin-top:0.25rem;" class="tabular">
                 Placed on {{ o.order_date.strftime('%Y-%m-%d %H:%M') }} · Est. {{ o.estimated_delivery_time }} min
               </div>
             </div>
-            <div style="font-size:1.25rem;font-weight:800;color:var(--brand);">
+            <div style="font-size:1.28rem;font-weight:800;color:var(--brand);" class="tabular">
               {{ "%.2f"|format(o.total_price) }} TL
             </div>
           </div>
+
+          {% if step_idx > 0 %}
+            <div class="order-stepper" aria-label="Order progress">
+              {% for idx, label in [(1, 'Order Confirmed'), (2, 'Preparing'), (3, 'On the way'), (4, 'Delivered')] %}
+                <div class="order-step {% if step_idx > idx %}done{% elif step_idx == idx %}done current{% endif %}">
+                  <span class="order-step-dot">
+                    {% if step_idx >= idx %}{{ icon('check', 12) }}{% else %}{{ idx }}{% endif %}
+                  </span>
+                  <span>{{ label }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
 
           <div class="soft-box" style="margin-bottom:0.85rem;font-size:0.9rem;">
             <div><strong>Products:</strong> {{ o.items_summary or '—' }}</div>
@@ -89,7 +104,7 @@
               <div class="review-box">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
                   <div>
-                    <strong>Your Review:</strong> <span class="badge badge-manager">★ {{ o.review_rating }} / 5</span>
+                    <strong>Your Review:</strong> <span class="badge badge-manager">{{ icon('star', 13) }} {{ o.review_rating }} / 5</span>
                     <span style="margin-left:0.5rem;font-size:0.9rem;">{{ o.review_comment or '' }}</span>
                   </div>
                   <form method="post" action="/reviews/{{ o.restaurant_review_id }}/delete" style="margin:0;">
@@ -119,17 +134,17 @@
               </div>
             {% else %}
               <details>
-                <summary>★ Leave a Restaurant Review for this Order</summary>
+                <summary>{{ icon('star', 14) }} Leave a Restaurant Review for this Order</summary>
                 <form method="post" action="/my-orders/{{ o.order_id }}/review" style="margin-top:0.75rem;">
                   <div class="form-row">
                     <div class="form-group">
                       <label>Rating (1–5)</label>
                       <select name="rating" class="form-control" required>
-                        <option value="5">★★★★★ (5 — Excellent)</option>
-                        <option value="4">★★★★☆ (4 — Very Good)</option>
-                        <option value="3">★★★☆☆ (3 — Good)</option>
-                        <option value="2">★★☆☆☆ (2 — Fair)</option>
-                        <option value="1">★☆☆☆☆ (1 — Poor)</option>
+                        <option value="5">5 — Excellent</option>
+                        <option value="4">4 — Very Good</option>
+                        <option value="3">3 — Good</option>
+                        <option value="2">2 — Fair</option>
+                        <option value="1">1 — Poor</option>
                       </select>
                     </div>
                     <div class="form-group">

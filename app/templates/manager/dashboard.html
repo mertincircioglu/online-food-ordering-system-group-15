@@ -1,11 +1,12 @@
 {% extends "manager/base_manager.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Manager Portal — {{ restaurant.name }}{% endblock %}
 {% block manager_content %}
 <div class="section-header">
   <div>
     <h1>{{ restaurant.name }}</h1>
-    <p style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
-      📍 {{ restaurant.street }}, {{ restaurant.neighborhood }}, {{ restaurant.district }}/{{ restaurant.province }}
+    <p class="meta-item" style="margin:0.25rem 0 0;color:var(--muted);font-size:0.92rem;">
+      {{ icon('map-pin', 15) }} {{ restaurant.street }}, {{ restaurant.neighborhood }}, {{ restaurant.district }}/{{ restaurant.province }}
     </p>
   </div>
 </div>
@@ -25,7 +26,7 @@
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Derived Average Rating</div>
-    <div class="kpi-value">★ {{ "%.2f"|format(restaurant.avg_rating) }} <span style="font-size:0.9rem;color:var(--muted);">({{ restaurant.review_count }})</span></div>
+    <div class="kpi-value" style="display:flex;align-items:center;gap:0.4rem;">{{ icon('star', 22) }} {{ "%.2f"|format(restaurant.avg_rating) }} <span style="font-size:0.9rem;color:var(--muted);">({{ restaurant.review_count }})</span></div>
   </div>
 </div>
 
@@ -110,7 +111,7 @@
       <div style="border-bottom:1px solid var(--border);padding:0.75rem 0;">
         <div style="display:flex;justify-content:space-between;">
           <strong>{{ rev.first_name }} {{ rev.last_name }} <span style="font-size:0.8rem;color:var(--muted);">· Order #{{ rev.order_id }}</span></strong>
-          <span class="badge" style="background:#fff7ed;color:#ea580c;">★ {{ rev.rating }} / 5</span>
+          <span class="badge badge-manager">{{ icon('star', 13) }} {{ rev.rating }} / 5</span>
         </div>
         <p style="margin:0.35rem 0 0;font-size:0.9rem;color:var(--ink-soft);">{{ rev.comment or 'No written comment.' }}</p>
       </div>

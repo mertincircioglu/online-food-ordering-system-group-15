@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Admin Dashboard — BiteFlow{% endblock %}
 {% block admin_content %}
 <div class="section-header">
@@ -136,7 +137,7 @@ ORDER BY total_revenue DESC, derived_rating DESC;</pre>
               <td>{{ row.total_orders }}</td>
               <td><strong style="color:var(--brand);">{{ "%.2f"|format(row.total_revenue) }} TL</strong></td>
               <td>{{ "%.2f"|format(row.avg_order_value) }} TL</td>
-              <td>★ {{ "%.2f"|format(row.derived_rating) }}</td>
+              <td><span class="badge badge-manager">{{ icon('star', 13) }} {{ "%.2f"|format(row.derived_rating) }}</span></td>
             </tr>
           {% endfor %}
         </tbody>

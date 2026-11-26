@@ -1,24 +1,28 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ restaurant.name }} — BiteFlow{% endblock %}
 {% block content %}
 <div style="margin-bottom:1.25rem;">
-  <a href="/" style="font-size:0.9rem;font-weight:600;color:var(--muted);">← Back to all restaurants</a>
+  <a href="/" class="meta-item" style="font-size:0.9rem;font-weight:600;color:var(--muted);">
+    {{ icon('arrow-left', 16) }} Back to all restaurants
+  </a>
 </div>
 
-<section class="hero" style="padding:2.2rem 2rem;margin-bottom:1.75rem;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
+<section class="hero hero-single" style="margin-bottom:1.75rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1.25rem;">
     <div>
       <span class="hero-pill">{{ cuisines | join(' · ') }}</span>
-      <h1 style="margin:0.35rem 0 0.45rem;">{{ restaurant.name }}</h1>
-      <p style="margin:0;opacity:0.92;font-size:0.94rem;">
-        📍 {{ restaurant.street }} No:{{ restaurant.building_no or '-' }}, {{ restaurant.neighborhood }}, {{ restaurant.district }}/{{ restaurant.province }} · 📞 {{ restaurant.phone_number }}
+      <h1 style="margin:0.35rem 0 0.5rem;">{{ restaurant.name }}</h1>
+      <p style="margin:0;opacity:0.92;font-size:0.94rem;display:flex;align-items:center;gap:0.85rem;flex-wrap:wrap;max-width:none;">
+        <span class="meta-item">{{ icon('map-pin', 15) }} {{ restaurant.street }} No:{{ restaurant.building_no or '-' }}, {{ restaurant.neighborhood }}, {{ restaurant.district }}/{{ restaurant.province }}</span>
+        <span class="meta-item tabular">{{ icon('phone', 15) }} {{ restaurant.phone_number }}</span>
       </p>
     </div>
     <div style="display:flex;gap:0.65rem;flex-wrap:wrap;">
-      <div class="rating-pill" style="padding:0.45rem 0.9rem;font-size:0.95rem;">
-        ★ {{ "%.1f"|format(restaurant.avg_rating) }} ({{ restaurant.review_count }} reviews)
+      <div class="rating-pill" style="padding:0.48rem 0.95rem;font-size:0.95rem;">
+        {{ icon('star', 15) }} {{ "%.1f"|format(restaurant.avg_rating) }} ({{ restaurant.review_count }} reviews)
       </div>
-      <div class="rating-pill" style="padding:0.45rem 0.9rem;font-size:0.9rem;">
+      <div class="rating-pill" style="padding:0.48rem 0.95rem;font-size:0.9rem;">
         Min. {{ "%.2f"|format(restaurant.min_order_amount) }} TL
       </div>
     </div>
@@ -27,15 +31,15 @@
 
 <div class="card" style="margin-bottom:1.75rem;">
   <div class="card-body" style="padding:1rem 1.35rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;align-items:center;">
-    <div>
-      <strong style="font-size:0.86rem;color:var(--muted);text-transform:uppercase;">Delivery Options:</strong>
+    <div style="display:flex;align-items:center;gap:0.45rem;flex-wrap:wrap;">
+      <strong style="font-size:0.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Delivery Options:</strong>
       {% for dt in delivery_types %}
-        <span class="badge badge-neutral" style="margin-left:0.35rem;">{{ dt | replace('_', ' ') }}</span>
+        <span class="badge badge-neutral">{{ dt | replace('_', ' ') }}</span>
       {% endfor %}
     </div>
     <details>
-      <summary>Working Hours (7 Days)</summary>
-      <div style="display:flex;gap:0.85rem;flex-wrap:wrap;margin-top:0.65rem;font-size:0.84rem;">
+      <summary>{{ icon('clock', 15) }} Working Hours (7 Days)</summary>
+      <div style="display:flex;gap:0.95rem;flex-wrap:wrap;margin-top:0.65rem;font-size:0.84rem;" class="tabular">
         {% for wh in working_hours %}
           <span><strong>{{ wh.day[:3] }}:</strong> {{ wh.opening_time.strftime('%H:%M') }}–{{ wh.closing_time.strftime('%H:%M') }}</span>
         {% endfor %}
@@ -44,7 +48,7 @@
   </div>
 </div>
 
-<div class="chip-row" style="margin-bottom:1.25rem;">
+<div class="chip-row" style="margin-bottom:1.4rem;">
   <a href="/restaurants/{{ restaurant.restaurant_id }}{% if discount_only %}?discount=1{% endif %}" class="chip {% if not selected_category %}active{% endif %}">All Categories</a>
   {% for cat in categories %}
     <a href="/restaurants/{{ restaurant.restaurant_id }}?category={{ cat | urlencode }}{% if discount_only %}&discount=1{% endif %}" class="chip {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
@@ -52,7 +56,7 @@
   <a href="/restaurants/{{ restaurant.restaurant_id }}?{% if selected_category %}category={{ selected_category | urlencode }}&{% endif %}{% if not discount_only %}discount=1{% endif %}"
      class="chip {% if discount_only %}active{% endif %}"
      style="{% if not discount_only %}border-color:#86efac;color:#15803d;{% endif %}">
-    🔥 Active Discounts
+    {{ icon('flame', 15) }} Active Discounts
   </a>
 </div>
 
@@ -61,14 +65,14 @@
     <div>
       <div class="section-header">
         <h2>Menu Products</h2>
-        <span style="font-size:0.86rem;color:var(--muted);">{{ products | length }} items</span>
+        <span style="font-size:0.86rem;color:var(--muted);" class="tabular">{{ products | length }} items</span>
       </div>
 
       {% for p in products %}
         <div class="menu-item-card">
           <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.25rem;">
-              <strong style="font-size:1.03rem;">{{ p.product_name }}</strong>
+              <strong style="font-size:1.05rem;">{{ p.product_name }}</strong>
               <span class="badge badge-neutral">{{ p.category }}</span>
               {% if p.discount_available and p.discount_percentage %}
                 <span class="badge badge-discount">-{{ "%.0f"|format(p.discount_percentage) }}% OFF</span>
@@ -78,24 +82,25 @@
               {% endif %}
             </div>
             {% if p.description %}
-              <div style="font-size:0.86rem;color:var(--muted);margin-bottom:0.45rem;">{{ p.description }}</div>
+              <div style="font-size:0.87rem;color:var(--muted);margin-bottom:0.5rem;">{{ p.description }}</div>
             {% endif %}
             <div style="display:flex;align-items:baseline;gap:0.55rem;">
               <span class="menu-item-price">{{ "%.2f"|format(p.final_price) }} TL</span>
               {% if p.discount_available and p.discount_percentage %}
-                <span style="font-size:0.86rem;color:var(--muted);text-decoration:line-through;">{{ "%.2f"|format(p.price) }} TL</span>
+                <span style="font-size:0.86rem;color:var(--muted);text-decoration:line-through;" class="tabular">{{ "%.2f"|format(p.price) }} TL</span>
               {% endif %}
             </div>
           </div>
 
           {% if p.is_available %}
             <div class="qty-control">
-              <button type="button" class="qty-btn" onclick="changeQty({{ p.product_id }}, -1)">−</button>
+              <button type="button" class="qty-btn" aria-label="Decrease quantity of {{ p.product_name }}" onclick="changeQty({{ p.product_id }}, -1)">−</button>
               <input
                 type="number"
                 class="qty-input"
                 id="qty_{{ p.product_id }}"
                 name="qty_{{ p.product_id }}"
+                aria-label="Quantity of {{ p.product_name }}"
                 value="0"
                 min="0"
                 max="20"
@@ -103,7 +108,7 @@
                 data-name="{{ p.product_name }}"
                 onchange="recalcCart()"
               />
-              <button type="button" class="qty-btn" onclick="changeQty({{ p.product_id }}, 1)">+</button>
+              <button type="button" class="qty-btn" aria-label="Increase quantity of {{ p.product_name }}" onclick="changeQty({{ p.product_id }}, 1)">+</button>
             </div>
           {% endif %}
         </div>
@@ -115,8 +120,11 @@
     <aside class="sticky-cart">
       <div class="card">
         <div class="card-body">
-          <h3 style="margin:0 0 0.25rem;">Your Order</h3>
-          <p style="margin:0 0 1rem;font-size:0.84rem;color:var(--muted);">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+            {{ icon('shopping-bag', 19) }}
+            <h3 style="margin:0;">Your Order</h3>
+          </div>
+          <p style="margin:0 0 1rem;font-size:0.84rem;color:var(--muted);" class="tabular">
             Minimum order: <strong>{{ "%.2f"|format(restaurant.min_order_amount) }} TL</strong>
           </p>
 
@@ -124,7 +132,7 @@
             Select products from the menu to start your order.
           </div>
 
-          <div style="display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:1.15rem;margin-bottom:1.1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:1.18rem;margin-bottom:1.1rem;" class="tabular">
             <span>Total</span>
             <span id="cartTotal" style="color:var(--brand);">0.00 TL</span>
           </div>
@@ -198,10 +206,10 @@
               <strong>{{ rev.first_name }} {{ rev.last_name }}</strong>
               <span style="font-size:0.78rem;color:var(--muted);">· Order #{{ rev.order_id }}</span>
             </div>
-            <span class="badge" style="background:#fff7ed;color:#ea580c;">★ {{ rev.rating }} / 5</span>
+            <span class="badge badge-manager">{{ icon('star', 13) }} {{ rev.rating }} / 5</span>
           </div>
           <p style="margin:0.35rem 0 0.65rem;color:var(--ink-soft);font-size:0.93rem;">{{ rev.comment or 'No written comment.' }}</p>
-          <div style="font-size:0.8rem;color:var(--muted);">{{ rev.date.strftime('%Y-%m-%d %H:%M') }}</div>
+          <div style="font-size:0.8rem;color:var(--muted);" class="tabular">{{ rev.date.strftime('%Y-%m-%d %H:%M') }}</div>
         </div>
       </div>
     {% else %}
@@ -228,7 +236,7 @@
       if (qty > 0) {
         const sub = qty * price;
         total += sub;
-        lines.push(`<div style="display:flex;justify-content:space-between;margin-bottom:0.35rem;color:var(--ink);"><span>${inp.dataset.name} × ${qty}</span><strong>${sub.toFixed(2)} TL</strong></div>`);
+        lines.push(`<div style="display:flex;justify-content:space-between;margin-bottom:0.35rem;color:var(--ink);"><span>${inp.dataset.name} × ${qty}</span><strong class="tabular">${sub.toFixed(2)} TL</strong></div>`);
       }
     });
     document.getElementById('cartSummary').innerHTML = lines.length
