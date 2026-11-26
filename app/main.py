@@ -1,6 +1,8 @@
 import math
 import os
 import re
+import time
+from collections import defaultdict
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Optional
 
@@ -20,8 +22,47 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY", "biteflow-cmpe341-group15-secret-key-2026"),
     same_site="lax",
-    https_only=False,
+    https_only=os.getenv("COOKIE_SECURE", "false").lower() == "true",
+    max_age=60 * 60 * 12,
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
+
+# Simple in-memory login rate limiter (brute-force protection)
+LOGIN_WINDOW_SECONDS = 300
+MAX_LOGIN_ATTEMPTS = 10
+_failed_logins = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _is_login_rate_limited(ip: str) -> bool:
+    now = time.time()
+    recent = [ts for ts in _failed_logins[ip] if now - ts < LOGIN_WINDOW_SECONDS]
+    _failed_logins[ip] = recent
+    return len(recent) >= MAX_LOGIN_ATTEMPTS
+
+
+def _record_failed_login(ip: str):
+    _failed_logins[ip].append(time.time())
+
+
+def _clear_failed_logins(ip: str):
+    _failed_logins.pop(ip, None)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -157,6 +198,11 @@ def login_submit(
     email: str = Form(...),
     password: str = Form(...),
 ):
+    ip = _client_ip(request)
+    if _is_login_rate_limited(ip):
+        flash(request, "Too many failed login attempts. Please wait 5 minutes and try again.", "error")
+        return RedirectResponse("/login", status_code=303)
+
     member = fetch_one(
         """
         SELECT m.member_id, m.email, m.first_name, m.last_name, m.password_hash, m.is_banned,
@@ -173,6 +219,7 @@ def login_submit(
         (email.strip().lower(),),
     )
     if not member or not verify_password(password, member["password_hash"]):
+        _record_failed_login(ip)
         flash(request, "Invalid email or password.", "error")
         return RedirectResponse("/login", status_code=303)
 
@@ -180,6 +227,7 @@ def login_submit(
         flash(request, "This account has been banned by an administrator.", "error")
         return RedirectResponse("/login", status_code=303)
 
+    _clear_failed_logins(ip)
     request.session["member_id"] = member["member_id"]
     flash(request, f"Welcome back, {member['first_name']} {member['last_name']}!", "success")
     if member["role"] == "admin":

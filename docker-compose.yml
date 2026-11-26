@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-biteflow_pass}
       POSTGRES_DB: ${POSTGRES_DB:-biteflow_db}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - pgdata:/var/lib/postgresql/data
@@ -30,6 +30,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-biteflow}:${POSTGRES_PASSWORD:-biteflow_pass}@db:5432/${POSTGRES_DB:-biteflow_db}
       SECRET_KEY: ${SECRET_KEY:-biteflow-cmpe341-group15-secret-key-2026}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "${APP_PORT:-8000}:8000"
 
