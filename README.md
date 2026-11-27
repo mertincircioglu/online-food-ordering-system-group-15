@@ -1,6 +1,6 @@
 # BiteFlow — Online Food Ordering System (Group 15)
 
-**Course:** CMPE341 — Database Design & Management (Atılım University, 2026–2027 Fall)  
+**Course:** CMPE341 — Database Design & Management (Atilim University, 2026–2027 Fall)
 **Group:** Group 15  
 **Topic:** Online Food Ordering System  
 
